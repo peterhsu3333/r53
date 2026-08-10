@@ -204,13 +204,7 @@ void substitute_cas(uintptr_t pc, Insn_t* i3)
 bool hart_t::single_step()
 {
   uintptr_t addresses[10];	// address list is one per hart
-  
-#ifndef OLD_TCACHE
-  Insn_t insn[4];
-  Header_t* bb = (Header_t*)insn;
-#else
   Header_t* bb = tcache.array0();
-#endif
 
   bb->addr = pc;
   bb->count = 1;

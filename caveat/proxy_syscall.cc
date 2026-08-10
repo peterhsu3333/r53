@@ -149,7 +149,7 @@ uintptr_t host_syscall(int sysnum, uintptr_t a0, uintptr_t a1, uintptr_t a2, uin
   case SYS_exit_group:
     goto stop;
     
-#if 1
+#if 0
   case SYS_brk:
     //retval = emulate_brk(a0, read_pc()>MEM_END ? &dl_linux_info : &prog_info);
     //fprintf(stderr, "current.brk = 0x%lx\n", current.brk);
@@ -269,7 +269,6 @@ long riscv_hwprobe(long a0, long a1, long a2, long a3, long a4, long a5)
   struct riscv_hwprobe* p = (struct riscv_hwprobe*)a0;
     
   for (int k=0; k<a1; ++k) {
-    fprintf(stderr, "hwprobe[%d]=(%2lld, %llb) before\n", k, p->key, p->value);
     switch (p->key) {
     case RISCV_HWPROBE_KEY_MVENDORID:
     case RISCV_HWPROBE_KEY_MARCHID:
@@ -290,7 +289,6 @@ long riscv_hwprobe(long a0, long a1, long a2, long a3, long a4, long a5)
       p->value = 0;
       break;
     }
-    fprintf(stderr, "hwprobe[%d]=(%2lld, %llb) after\n", k, p->key, p->value);
   }
   return 0;
 }

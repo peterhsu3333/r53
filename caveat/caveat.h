@@ -106,27 +106,6 @@ static inline Insn_t* insnp(Header_t* p) { return (Insn_t*)p; }
 static inline Header_t* bbptr(Tentry_t* p) { return (Header_t*)p; }
 static inline Header_t* bbptr(Insn_t*   p) { return (Header_t*)p; }
 
-#ifndef OLD_TCACHE
-
-#include <map>
-using namespace std;
-
-class Tcache_t {
-  map<uintptr_t, Header_t*> table;
-public:
-  Header_t* find(uintptr_t pc) { auto it=table.find(pc); return it==table.end() ? 0 : it->second; }
-  Header_t* add(Header_t* wbb, size_t n) {
-    Header_t* bb = (Header_t*)new uint64_t[n];
-    memcpy(bb, wbb, n*sizeof(uint64_t));
-    table.insert({bb->addr, bb});
-    return bb;
-  }
-  size_t flushed() { return 0; }
-};
-
-#else
-
-BOO BOO
 class Tcache_t {
   Tentry_t* array;		// array of headers, instructions, link pointers
   size_t _size;			// current number of entries
@@ -156,38 +135,10 @@ public:
     }
     return 0;
   }
-  // copy basic block into cache and insert into hash table
-  Header_t* add(Header_t* wbb, size_t n) {
-    if (_size+n > conf_tcache()) {
-      dieif(n>conf_tcache(), "basic block size %lu bigger than cache %lu", n, conf_tcache());
-      clear();
-    }
-    Header_t* bb = (Header_t*)&array[_size];
-    _size += n;
-    memcpy(bb, wbb, n*sizeof(uint64_t));
-    uint32_t h = hashfunction(bb->addr);
-    bb->link = table[h];
-    table[h] = index(bb);
-    return bb;
-  }
-  // flush translation cache
-  void clear() {
-    memset((void*)table, 0, conf_hash()*sizeof(uint32_t));
-    _size = 2;			// not necessary to zero cache
-    _flushed++;
-  }
-  Tcache_t() {
-    array = new Tentry_t[conf_tcache()];
-    table = new uint32_t[conf_hash()];
-    memset((void*)array, 0, conf_tcache()*sizeof(Tentry_t));
-    memset((void*)table, 0, conf_hash()*sizeof(uint32_t));
-    _size = 2;
-    _flushed = 0;
-  }
+  Tcache_t();
+  Header_t* add(Header_t* wbb, size_t n);
+  void clear();
 };
-
-#endif
-
 
 
 typedef void (*simfunc_t)(class hart_t* h, Header_t* bb, uintptr_t* ap);

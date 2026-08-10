@@ -14,6 +14,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <elf.h>
+//#include <pthread.h>
 
 #include <string>
 #include <map>
@@ -118,7 +119,7 @@ static void read_elf_symbols(const char* filename, uintptr_t bias)
   char* shstrtbl = new char[shdr.sh_size];
   dieif(lseek(fd, shdr.sh_offset, SEEK_SET)<0, "lseek shstrtbl failed");
   dieif(read(fd, shstrtbl, shdr.sh_size)!=shdr.sh_size, "read shstrtbl failed");
-
+  
   // First find string table and copy into memory
   char* strtbl = 0;
   for (int i=eh.e_shnum-1; i>=0; i--) {
@@ -154,7 +155,7 @@ static void read_elf_symbols(const char* filename, uintptr_t bias)
 	//dbmsg("%16lx %s", sb.st_value+bias, strtbl+sb.st_name);
 	
 	//	if (ELF64_ST_TYPE(sb.st_info) == STT_FUNC)
-	  fname[sb.st_value + bias] = strtbl + sb.st_name;
+	fname[sb.st_value + bias] = strtbl + sb.st_name;
 	if (ELF64_ST_TYPE(sb.st_info) == STT_OBJECT)
 	  symaddr[strtbl + sb.st_name] = sb.st_value + bias;
 	  //	  objsym][strtbl + sb.st_name = { .addr=sb.st_value+bias, .size=sb.st_size };
@@ -424,7 +425,6 @@ static long initialize_stack(int argc, const char** argv, const char** envp, pin
   // argc
   PUSH_ARG(argc);
 
-  fprintf(stderr, "stqack_top = 0x%lx\n", stack_top);
   return stack_top;
 }
 
@@ -477,8 +477,12 @@ extern "C" {
 static char simpool[poolsize];	/* base of memory pool */
 static volatile char* pooltop = simpool; /* current allocation address */
 
+  //pthread_mutex_t mtx = PTHREAD_MUTEX_INITIALIZER;
+  
 void *malloc(size_t size)
 {
+  //pthread_mutex_lock(&mtx);
+  //fprintf(stderr, "malloc(%ld)\n", size);
   char volatile *rv, *newtop;
   do {
     volatile char* after = pooltop + size + 16; /* allow for alignment */
@@ -492,6 +496,7 @@ void *malloc(size_t size)
   } while (!__sync_bool_compare_and_swap(&pooltop, rv, newtop));
   *(size_t*)rv = size;
   rv += 8;
+  //pthread_mutex_unlock(&mtx);
   return (void*)rv;
 }
 
