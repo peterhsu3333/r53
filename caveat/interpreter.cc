@@ -201,7 +201,7 @@ void substitute_cas(uintptr_t pc, Insn_t* i3)
 #define reg_jump(npc)  { pc=(npc); goto end_bb; }
 #define stop       { pc+=4;    goto end_bb; }
 
-bool hart_t::single_step()
+bool hart_t::single_step(uintptr_t& xpc, Insn_t& insn, uint64_t& val)
 {
   uintptr_t addresses[10];	// address list is one per hart
   Header_t* bb = tcache.array0();
@@ -211,6 +211,8 @@ bool hart_t::single_step()
   Insn_t* i = (Insn_t*)bb + 2;	// skip over header
   uintptr_t oldpc = pc;
   *i = decoder(pc);
+  xpc = pc;			// record becausea will change
+  insn = *i;
   uintptr_t* ap = addresses;
   if (i->opcode()==Op_sc_w || i->opcode()==Op_sc_d)
     substitute_cas(pc, i);
@@ -240,5 +242,12 @@ bool hart_t::single_step()
   }
   if (simulator)
     simulator(this, bb, addresses);
+
+  if (ATTR[insn.opcode()] & (ATTR_ld|ATTR_st|ATTR_rmw))
+    val = addresses[0];
+  else if (insn.rd() < FPREG)
+    val = s.xrf[insn.rd()];
+  else
+    val = s.frf[insn.rd()].v[0];
   return false;
 }

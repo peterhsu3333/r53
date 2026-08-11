@@ -19,9 +19,10 @@ install:
 	make -C caveat   install
 
 clean:
-	rm -f $(CAVA)/lib/libcava.a *~ ./#*#
-	rm -f $(CAVA)/include/cava/*
+	rm -f $(CAVA)/lib/libcava.a $(CAVA)/lib/libsoftfloat.a *~ ./#*#
+	rm -rf $(CAVA)/include/cava $(CAVA)/include/softfloat
 	rm -f softfloat/libsoftfloat.a
+	rm -f $(CAVA)/bin/caveat
 	make -C softfloat clean
 	make -C opcodes   clean
 	make -C caveat    clean

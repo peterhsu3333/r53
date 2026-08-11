@@ -6,7 +6,6 @@
 #include <signal.h>
 #include <setjmp.h>
 #include <pthread.h>
-#include <ctype.h>
 #include <sys/mman.h>
 
 #include "caveat.h"
@@ -14,48 +13,6 @@
 
 option<long> conf_report("report", 1, "Status report per second");
 option<bool> conf_step  ("step", false, true, "Single step");
-option<>     conf_arch  ("arch", "rv64gc", "rv64gc", "RISC-V architecture and extensions");
-
-ISA_bv_t  this_isa = 0;
-
-Tcache_t::Tcache_t()
-{
-  array = new Tentry_t[conf_tcache()];
-  table = new uint32_t[conf_hash()];
-#if 0
-  array = (Tentry_t*)mmap(NULL, conf_tcache()*sizeof(Tentry_t), PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
-  dieif(!array, "mmap of Tcache array failed");
-  table = (uint32_t*)mmap(NULL, conf_hash()*sizeof(Tentry_t), PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
-  dieif(!array, "mmap of Tcache hash table failed");
-#endif
-  memset((void*)array, 0, conf_tcache()*sizeof(Tentry_t));
-  memset((void*)table, 0, conf_hash()*sizeof(uint32_t));
-  _size = 2;
-  _flushed = 0;
-}
-
-// copy basic block into cache and insert into hash table
-Header_t* Tcache_t::add(Header_t* wbb, size_t n) {
-  if (_size+n > conf_tcache()) {
-    dieif(n>conf_tcache(), "basic block size %lu bigger than cache %lu", n, conf_tcache());
-    clear();
-  }
-  Header_t* bb = (Header_t*)&array[_size];
-  _size += n;
-  for (int k=0; k<n; ++k)
-    bb[k] = wbb[k];
-  //memcpy(bb, wbb, n*sizeof(uint64_t));
-  uint32_t h = hashfunction(bb->addr);
-  bb->link = table[h];
-  table[h] = index(bb);
-  return bb;
-}
-// flush translation cache
-void Tcache_t::clear() {
-  memset((void*)table, 0, conf_hash()*sizeof(uint32_t));
-  _size = 2;			// not necessary to zero cache
-  _flushed++;
-}
 
 
 void status_report()
@@ -146,31 +103,9 @@ void exitfunc()
 
 int main(int argc, const char* argv[], const char* envp[])
 {
-  parse_options(argc, argv, "caveat: user-mode RISC-V interpreter derived from Spike");
+  parse_options(argc, argv, "caveat: user-mode RISC-V interpreter");
   if (argc == 0)
     help_exit();
-
-#if 1
-  // figure out architecture options
-  if (strncmp(conf_arch(), "rv64", 4) == 0)
-    this_isa |= ISA_64;
-  else if (strncmp(conf_arch(), "rv32", 4) == 0)
-    this_isa |= ISA_32;
-  else
-    die("arch must be either rv64 or rv32");
-#endif
-  for (int k=4; conf_arch()[k]; ++k) {
-    switch (toupper(conf_arch()[k])) {
-    case 'G':  this_isa |= ISA_G;  break;
-    case 'I':  this_isa |= ISA_I;  break;
-    case 'M':  this_isa |= ISA_M;  break;
-    case 'A':  this_isa |= ISA_A;  break;
-    case 'F':  this_isa |= ISA_F;  break;
-    case 'D':  this_isa |= ISA_D;  break;
-    case 'C':  this_isa |= ISA_C;  break;
-    default:  die("Invalid architecture %s", conf_arch());
-    }
-  }
   
   // before creating harts
   mycpu = new hart_t(argc, argv, envp);
@@ -203,8 +138,11 @@ int main(int argc, const char* argv[], const char* envp[])
   if (conf_gdb())
     controlled_by_gdb(conf_gdb(), mycpu);
   else if (conf_show()) {
-    while (1)
-      mycpu->single_step();
+    while (1) {
+      uintptr_t xpc, val;
+      Insn_t insn;
+      mycpu->single_step(xpc, insn, val);
+    }
   }
   else {
     if (conf_report() > 0) {
@@ -213,8 +151,11 @@ int main(int argc, const char* argv[], const char* envp[])
     }
     atexit(exitfunc);
     if (conf_step()) {
-      for (;;)
-	mycpu->single_step();
+      for (;;) {
+	uintptr_t xpc, val;
+	Insn_t insn;
+	mycpu->single_step(xpc, insn, val);
+      }
     }
     else
       my_interpreter(mycpu);

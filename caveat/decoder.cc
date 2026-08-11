@@ -44,7 +44,7 @@ Insn_t decoder(uintptr_t pc)
   
 #include "decoder.h"
 
-  //  fprintf(stderr, "Illegal instruction pc=%lx, %08x\n", pc, *(unsigned*)pc);
+  fprintf(stderr, "Illegal instruction pc=%lx, %08x\n", pc, *(unsigned*)pc);
   i.op_code = Op_ILLEGAL;
   return i;
 }

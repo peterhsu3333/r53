@@ -135,7 +135,7 @@ public:
 
   Header_t* find_bb(uintptr_t pc);
   void default_interpreter();
-  bool single_step();
+  bool single_step(uintptr_t& xpc, Insn_t& insn, uint64_t& val);
   void print(uintptr_t pc, Insn_t* i, FILE* out =stderr);
   long executed() { return _executed; }
   void count_insn(int n =1) { _executed += n; }

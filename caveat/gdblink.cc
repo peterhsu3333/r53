@@ -556,13 +556,15 @@ void controlled_by_gdb(const char* host_port, hart_t* cpu)
     }
 
     //    signal(SIGTRAP, signal_handler);
+    uintptr_t xpc, val;
+    Insn_t insn;
     do {
       //      if (conf_show) {
       //	Insn_t i = decoder(*gdb_pc);
       //	labelpc(*gdb_pc);
       //	disasm(*gdb_pc, &i);
       //      }
-    } while (!cpu->single_step());
+    } while (!cpu->single_step(xpc, insn, val));
     lastGdbSignal = SIGTRAP;
     ProcessGdbException();
   cleanup:
