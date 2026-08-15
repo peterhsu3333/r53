@@ -211,7 +211,7 @@ bool hart_t::single_step(uintptr_t& xpc, Insn_t& insn, uint64_t& val)
   Insn_t* i = (Insn_t*)bb + 2;	// skip over header
   uintptr_t oldpc = pc;
   *i = decoder(pc);
-  xpc = pc;			// record becausea will change
+  xpc = pc;			// record because will change
   insn = *i;
   uintptr_t* ap = addresses;
   if (i->opcode()==Op_sc_w || i->opcode()==Op_sc_d)

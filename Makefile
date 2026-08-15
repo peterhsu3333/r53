@@ -17,6 +17,7 @@ install:
 	make -j 16 -C softfloat install
 	make -C opcodes  install
 	make -C caveat   install
+	make -C pipesim  install
 
 clean:
 	rm -f $(CAVA)/lib/libcava.a $(CAVA)/lib/libsoftfloat.a *~ ./#*#
@@ -26,6 +27,7 @@ clean:
 	make -C softfloat clean
 	make -C opcodes   clean
 	make -C caveat    clean
+	make -C pipesim   clean
 
 tarball:  clean
 	( cd ..; tar -czvf cavatools.tgz cavatools )

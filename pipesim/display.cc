@@ -14,17 +14,20 @@ static long long stop_cycle = 0;	// when to stop free running
 void paint_instructions(WINDOW* w, int y, int x, int lines,
 			history_t history[], int history_length, long long now)
 {
-  //  wmove(w, 0, 0);
-  //  wprintw(w, "cycle=%lld, stop=%lld\n", cycle, stop_cycle);
+  wmove(w, 0, 0);
+  wprintw(w, "cycle=%lld, stop=%lld\n", cycle, stop_cycle);
   for (int k=0; k<lines-3; ++k) {
     if (--now < 0)		// current cycle time not yet executed
       break;
     history_t* h = &history[now % history_length];
+    //    if (h == 0)
+    //      continue;
     char buf[256];
     int len = slabelpc(buf, h->pc);
     sdisasm(buf+len, h->pc, &h->insn);
     wmove(w, y+now%lines, x);
-    wprintw(w, "%7lld %c [%16lx] %s\n", h->cycle, h->label, h->val, buf);
+    //wprintw(w, "%7lld %lx, %s", h->cycle, h->pc, buf);
+    wprintw(w, "%7lld %c [%16lx] %s", h->cycle, h->label, h->val, buf);
   }
 }
  
@@ -48,14 +51,17 @@ void interactive(core_t* cpu)
     // loop until any key pressed or target cycle reached
     while ((ch=getch()) == ERR) {
       if (cycle <= stop_cycle) {
+#if 0
 	// advance clock cycle
 	cpu->clock_pipeline(cpu->iu);
 	cpu->clock_pipeline(cpu->fpu);
 	cpu->clock_pipeline(cpu->mem);
+#endif
 	history_t* h = &cpu->history[cycle % cpu->history_length];
 	h->cycle = cycle;
 
 	//h->label = makelabel();
+	h->label = cpu->executed() % 26 + 'A';
 	cpu->single_step(h->pc, h->insn, h->val);
 	++cycle;
 	
@@ -65,9 +71,11 @@ void interactive(core_t* cpu)
 	paint_instructions(stdscr, 1, 0, LINES-1, cpu->history, cpu->history_length, cycle-behind);
 	refresh();
       }
-      usleep(framerate);
+      if (framerate)
+	usleep(framerate);
     }
     stop_cycle = 0;
+    framerate = conf_framerate();
     clear();
     paint_instructions(stdscr, 1, 0, LINES-1, cpu->history, cpu->history_length, cycle-behind);
     refresh();
@@ -100,6 +108,11 @@ void interactive(core_t* cpu)
     case 'c':			// continue free running
       stop_cycle = number ? number : LLONG_MAX;
       behind = 0;
+      break;
+    case 'C':			// continue free running
+      stop_cycle = number ? number : LLONG_MAX;
+      behind = 0;
+      framerate = 0;
       break;
     }
     number = 0;
