@@ -80,52 +80,6 @@ void disasm(uintptr_t pc, const Insn_t* i, const char* end, FILE* f)
   fprintf(f, "%s%s", buffer, end);
 }
 
-#ifdef DEBUG
-
-pctrace_t Debug_t::get()
-{
-  cursor = (cursor+1) % PCTRACEBUFSZ;
-  return trace[cursor];
-}
-
-void Debug_t::insert(pctrace_t pt)
-{
-  cursor = (cursor+1) % PCTRACEBUFSZ;
-  trace[cursor] = pt;
-}
-
-void Debug_t::insert(long pc, Insn_t i)
-{
-  cursor = (cursor+1) % PCTRACEBUFSZ;
-  trace[cursor].pc    = pc;
-  trace[cursor].i     = i;
-  trace[cursor].val   = ~0l;
-}
-
-void Debug_t::addval(long val)
-{
-  trace[cursor].val = val;
-}
-
-void Debug_t::print()
-{
-  for (int k=0; k<PCTRACEBUFSZ; k++) {
-    pctrace_t t = get();
-    Insn_t i = t.i;
-    if (i.rd() != NOREG)
-      fprintf(stderr, "%4s[%016lx] ", reg_name[i.rd()], t.val);
-    else if (ATTR[i.opcode()] & ATTR_st)
-      fprintf(stderr, "%4s[%016lx] ", reg_name[i.rs2()], t.val);
-    else
-      fprintf(stderr, "%4s[%16s] ", "", "");
-    labelpc(t.pc);
-    disasm(t.pc, &i, "");
-    fprintf(stderr, "\n");
-  }
-}
-
-#endif
-
 
 
 #include "constants.h"

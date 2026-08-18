@@ -14,8 +14,6 @@ static long long stop_cycle = 0;	// when to stop free running
 void paint_instructions(WINDOW* w, int y, int x, int lines,
 			history_t history[], int history_length, long long now)
 {
-  wmove(w, 0, 0);
-  wprintw(w, "cycle=%lld, stop=%lld\n", cycle, stop_cycle);
   for (int k=0; k<lines-3; ++k) {
     if (--now < 0)		// current cycle time not yet executed
       break;
@@ -60,10 +58,13 @@ void interactive(core_t* cpu)
 	history_t* h = &cpu->history[cycle % cpu->history_length];
 	h->cycle = cycle;
 
+#if 0
 	//h->label = makelabel();
 	h->label = cpu->executed() % 26 + 'A';
 	cpu->single_step(h->pc, h->insn, h->val);
 	++cycle;
+#endif
+	
 	
 	//if (!cpu->issue(h))
 	//  ++cycle;

@@ -1,4 +1,5 @@
 
+#include <ncurses.h>
 
 #include "caveat.h"
 #include "hart.h"
@@ -22,6 +23,7 @@ core_t::core_t(int argc, const char* argv[], const char* envp[])
   iu   = new pipeline_t("IU",  conf_iu());
   fpu  = new pipeline_t("FPU", conf_fpu());
   mem  = new pipeline_t("MEM", conf_mem());
+  issued = 0;
   history_length = conf_history();
   history = new history_t[history_length];
   memset(history, 0, history_length*sizeof(history_t));
@@ -38,7 +40,7 @@ int makelabel()
 bool core_t::issue(history_t* h)
 {
   // "fetch" instruction
-  Insn_t insn = decoder(pc);
+  Insn_t insn = decoder(s.pc);
   
   // check for busy registers
   uint64_t regs = 1LL << insn.op_rd | 1LL << insn.op_rs1;
@@ -68,7 +70,9 @@ bool core_t::issue(history_t* h)
   // issue instruction, immediate execution in simulator
   h->cycle = cycle;
   h->label = makelabel();
-  single_step(h->pc, h->insn, h->val);
+
+  reg_t values[2];
+  execute_instruction(insn, values);
   busy |= 1LL << insn.op_rd;	// mark output register busy
   
   return true;
@@ -95,6 +99,5 @@ int main(int argc, const char* argv[], const char* envp[])
   core_t* cpu = new core_t(argc, argv, envp);
   cpu->simulator = 0;
   cpu->riscv_syscall = default_riscv_syscall;
-
   interactive(cpu);
 }

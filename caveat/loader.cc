@@ -14,10 +14,10 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <elf.h>
-//#include <pthread.h>
-
 #include <string>
 #include <map>
+
+#include "caveat.h"
 
 #define RISCV_PGSHIFT 12
 #define RISCV_PGSIZE (1 << RISCV_PGSHIFT)
@@ -44,6 +44,7 @@ long emulate_brk(long addr);
 extern std::map<long, std::string> fname; // dictionary of pc->name
 std::map<std::string, long> symaddr;
 
+#if 0
 /*
   Utility stuff.
 */
@@ -51,6 +52,7 @@ std::map<std::string, long> symaddr;
 #define dieif(bad, fmt, ...)  if (bad) { fprintf(stderr, fmt, ##__VA_ARGS__); fprintf(stderr, "\n\n");  abort(); }
 //#define dbmsg(fmt, ...)		       { fprintf(stderr, fmt, ##__VA_ARGS__); fprintf(stderr, "\n"); }
 #define dbmsg(fmt, ...)
+#endif
 
 #define MEM_END		0x60000000L
 #define STACK_SIZE	0x08000000L
@@ -428,7 +430,7 @@ static long initialize_stack(int argc, const char** argv, const char** envp, pin
   return stack_top;
 }
 
-long emulate_execve(const char* filename, int argc, const char* argv[], const char* envp[], uintptr_t& pc)
+long emulate_execve(const char* filename, int argc, const char* argv[], const char* envp[], xlen_t& pc)
 {
   pc = load_elf_binary(argv[0]);
   dbmsg("interp.base=%lx", at_base);

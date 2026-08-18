@@ -34,7 +34,8 @@ struct core_t : public hart_t {
   core_t(int argc, const char* argv[], const char* envp[]);
   void clock_pipeline(pipeline_t* unit);
   bool issue(history_t* h);
-  
+
+  long issued;
   history_t* history;
   int history_length;
   friend void simulator(hart_t* h, Header_t* bb, uintptr_t* ap);
@@ -46,3 +47,6 @@ struct core_t : public hart_t {
 void paint_instructions(int y, int x, int lines, history_t history[], int begin);
 
 void interactive(core_t* cpu);
+
+
+void display_simulator(hart_t* h, Header_t* bb, uintptr_t* ap);

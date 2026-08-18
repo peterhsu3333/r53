@@ -12,7 +12,6 @@
 #include "hart.h"
 
 option<long> conf_report("report", 1, "Status report per second");
-option<bool> conf_step  ("step", false, true, "Single step");
 
 
 void status_report()
@@ -58,7 +57,9 @@ int my_clone_proxy(class hart_t* parent)
 
 void my_interpreter(hart_t* h)
 {
-  h->default_interpreter();
+  reg_t values[256];
+  while (1)
+    h->run_basic_block(values);
 }
 
 static jmp_buf return_to_top_level;
@@ -79,8 +80,6 @@ void signal_handler(int nSIGnum, siginfo_t* si, void* vcontext)
   //  context->uc_mcontext.gregs[]
   fprintf(stderr, "\n\nsignal_handler, signum=%d, tid=%d\n", nSIGnum, gettid());
   hart_t* thisCPU = hart_t::find(gettid());
-  thisCPU->debug_print();
-  //  mycpu->debug_print();
   exit(-1);
   //  longjmp(return_to_top_level, 1);
 }
@@ -129,7 +128,6 @@ int main(int argc, const char* argv[], const char* envp[])
     sigaction(SIGINT,  &action, NULL);
     if (setjmp(return_to_top_level) != 0) {
       fprintf(stderr, "SIGSEGV signal was caught\n");
-      mycpu->debug_print();
       exit(-1);
     }
   }
@@ -139,9 +137,11 @@ int main(int argc, const char* argv[], const char* envp[])
     controlled_by_gdb(conf_gdb(), mycpu);
   else if (conf_show()) {
     while (1) {
-      uintptr_t xpc, val;
-      Insn_t insn;
-      mycpu->single_step(xpc, insn, val);
+      Insn_t insn = decoder(mycpu->s.pc);
+      reg_t values[2];
+      xlen_t oldpc = mycpu->s.pc;
+      mycpu->execute_instruction(insn, values);
+      mycpu->print(oldpc, &insn);
     }
   }
   else {
@@ -150,14 +150,6 @@ int main(int argc, const char* argv[], const char* envp[])
       dieif(pthread_create(&tnum, 0, status_thread, 0), "failed to launch status_report thread");
     }
     atexit(exitfunc);
-    if (conf_step()) {
-      for (;;) {
-	uintptr_t xpc, val;
-	Insn_t insn;
-	mycpu->single_step(xpc, insn, val);
-      }
-    }
-    else
-      my_interpreter(mycpu);
+    my_interpreter(mycpu);
   }
 }

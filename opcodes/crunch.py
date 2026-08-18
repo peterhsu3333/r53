@@ -305,7 +305,7 @@ with open('newcode.tmp', 'w') as f:
                 fini = 'spike_stop'
             f.write('    case {:20s} {:s}; {:s}; // len={:d}\n'.format(opname+':', action, fini, int(bytes)))
         else:
-            f.write('    case {:20s} {:s}; pc+={:d}; break;\n'.format(opname+':', action, int(bytes)))
+            f.write('    case {:20s} {:s}; s.pc+={:d}; break;\n'.format(opname+':', action, int(bytes)))
 diffcp('../caveat/semantics.h')
     
 

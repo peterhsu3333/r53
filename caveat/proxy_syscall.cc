@@ -213,10 +213,10 @@ void thread_interpreter(hart_t* me)
 {
   me->_tid = gettid();
   futex(&me->_tid, FUTEX_WAKE, 1);
-  me->s.xrf[2] = me->s.xrf[11]; // a1 = child_stack
-  me->s.xrf[4] = me->s.xrf[13]; // a3 = tls
-  me->s.xrf[10] = 0;		// indicate child thread
-  me->pc += 4;			// skip over ecall
+  me->s.reg[2] = me->s.reg[11]; // a1 = child_stack
+  me->s.reg[4] = me->s.reg[13]; // a3 = tls
+  me->s.reg[10].x = 0;		// indicate child thread
+  me->s.pc += 4;		// skip over ecall
   me->interpreter(me);
 }
 

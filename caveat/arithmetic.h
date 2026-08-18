@@ -1,153 +1,64 @@
 /*
   Copyright (c) 2023 Peter Hsu.  All Rights Reserved.  See LICENCE file for details.
 */
-
-extern "C" {
-#include "specialize.h"
-#include "internals.h"
-};
+#include <cmath>
 
 
-#undef RM
 #define RM ({ int rm = i->immed(); \
               if(rm == 7) rm = s.frm; \
               if(rm > 4) die("Illegal instruction"); \
               rm; })
+#undef RM
 
-#define srm  softfloat_roundingMode = RM
-#define sfx  s.fflags |= softfloat_exceptionFlags
+#define srm
+#define sfx
 
+#define boxf(x) (0xFFFFFFFF00000000L | (x))
 
-/* Convenience wrappers to simplify softfloat code sequences */
+// RISC-V sign-injection and classify instructionsn
 
-#define isBoxedF32(r) (isBoxedF64(r) && ((uint32_t)((r.v[0] >> 32) + 1) == 0))
-#define unboxF32(r) (isBoxedF32(r) ? (uint32_t)r.v[0] : defaultNaNF32UI)
-#define isBoxedF64(r) ((r.v[1] + 1) == 0)
-#define unboxF64(r) (isBoxedF64(r) ? r.v[0] : defaultNaNF64UI)
+#define F32_SIGN ((unsigned       int)1 << 31)
+#define F64_SIGN ((unsigned long long)1 << 63)
 
-inline float32_t f32(uint32_t v) { return { v }; }
-inline float64_t f64(uint64_t v) { return { v }; }
-inline float32_t f32(freg_t r) { return f32(unboxF32(r)); }
-inline float64_t f64(freg_t r) { return f64(unboxF64(r)); }
-inline float128_t f128(freg_t r) { return r; }
-
-inline freg_t freg(float32_t f) { return { ((uint64_t)-1 << 32) | f.v, (uint64_t)-1 }; }
-inline freg_t freg(float64_t f) { return { f.v, (uint64_t)-1 }; }
-inline freg_t freg(float128_t f) { return f; }
-
-// RISC-V things
-
-#define F32_SIGN ((uint32_t)1 << 31)
-#define F64_SIGN ((uint64_t)1 << 63)
-
-
-// RISC-V sign-injection instructions
-
-static inline float32_t fsgnj_s(float32_t a, float32_t b, bool n, bool x)
+static inline unsigned int fsgnj_s(unsigned int a, unsigned int b, bool n, bool x)
 {
-  return f32((a.v & ~F32_SIGN) | ((((x) ? a.v : (n) ? F32_SIGN : 0) ^ b.v) & F32_SIGN));
+  return (a & ~F32_SIGN) | ((((x) ? a : (n) ? F32_SIGN : 0) ^ b) & F32_SIGN);
 }
 
-#define fsgnj64(a, b, n, x) \
-  f64((f64(a).v & ~F64_SIGN) | ((((x) ? f64(a).v : (n) ? F64_SIGN : 0) ^ f64(b).v) & F64_SIGN))
-
-// RISC-V compliant FP min/max
-
-static inline float32_t fmin_s(float32_t f1, float32_t f2)
+static inline unsigned long long fsgnj_d(unsigned long long a, unsigned long long b, bool n, bool x)
 {
-  bool less = f32_lt_quiet(f1, f2) || (f32_eq(f1, f2) && (f1.v & F32_SIGN));
-  if (isNaNF32UI(f1.v) && isNaNF32UI(f2.v))
-    return f32(defaultNaNF32UI);
-  else
-    return less || isNaNF32UI(f2.v) ? f1 : f2;
+  return (a & ~F64_SIGN) | ((((x) ? a : (n) ? F64_SIGN : 0) ^ b) & F64_SIGN);
 }
 
-static inline float32_t fmax_s(float32_t f1, float32_t f2)
+static inline unsigned classify_s(float aa)
 {
-  bool greater = f32_lt_quiet(f2, f1) || (f32_eq(f2, f1) && (f2.v & F32_SIGN));
-  if (isNaNF32UI(f1.v) && isNaNF32UI(f2.v))
-    return f32(defaultNaNF32UI);
-  else
-    return greater || isNaNF32UI(f2.v) ? f1 : f2;
+  reg_t a;
+  a.f = aa;
+  int sign = a.u & F32_SIGN;
+  switch (std::fpclassify(aa)) {
+  case FP_INFINITE:	return sign ? 0 : 7;
+  case FP_NAN:		return            9;
+  case FP_SUBNORMAL:	return sign ? 2 : 5;
+  case FP_ZERO:		return sign ? 3 : 4;
+  case FP_NORMAL:
+  default:		return sign ? 1 : 6;
+  }
 }
 
-static inline float64_t fmin_d(float64_t f1, float64_t f2)
+static inline unsigned classify_d(double aa)
 {
-  bool less = f64_lt_quiet(f1, f2) || (f64_eq(f1, f2) && (f1.v & F64_SIGN));
-  if (isNaNF64UI(f1.v) && isNaNF64UI(f2.v))
-    return f64(defaultNaNF64UI);
-  else
-    return less || isNaNF64UI(f2.v) ? f1 : f2;
+  reg_t a;
+  a.d = aa;
+  int sign = a.u & F64_SIGN;
+  switch (std::fpclassify(aa)) {
+  case FP_INFINITE:	return sign ? 0 : 7;
+  case FP_NAN:		return            9;
+  case FP_SUBNORMAL:	return sign ? 2 : 5;
+  case FP_ZERO:		return sign ? 3 : 4;
+  case FP_NORMAL:
+  default:		return sign ? 1 : 6;
+  }
 }
-
-static inline float64_t fmax_d(float64_t f1, float64_t f2)
-{
-  bool greater = f64_lt_quiet(f2, f1) || (f64_eq(f2, f1) && (f2.v & F64_SIGN));
-  if (isNaNF64UI(f1.v) && isNaNF64UI(f2.v))
-    return f64(defaultNaNF64UI);
-  else
-    return greater || isNaNF64UI(f2.v) ? f1 : f2;
-}
-
-// RISCV-V classify (disappeared from SoftFloat-3e
-
-#if 0
-static inline uint_fast16_t f32_classify( float32_t a )
-{
-  union ui32_f32 { uint32_t ui; float32_t f; } uA;
-  uint_fast32_t uiA;
-
-  uA.f = a;
-  uiA = uA.ui;
-
-  uint_fast16_t infOrNaN = expF32UI( uiA ) == 0xFF;
-  uint_fast16_t subnormalOrZero = expF32UI( uiA ) == 0;
-  bool sign = signF32UI( uiA );
-  bool fracZero = fracF32UI( uiA ) == 0;
-  bool isNaN = isNaNF32UI( uiA );
-  bool isSNaN = softfloat_isSigNaNF32UI( uiA );
-
-  return
-    (  sign && infOrNaN && fracZero )          << 0 |
-    (  sign && !infOrNaN && !subnormalOrZero ) << 1 |
-    (  sign && subnormalOrZero && !fracZero )  << 2 |
-    (  sign && subnormalOrZero && fracZero )   << 3 |
-    ( !sign && infOrNaN && fracZero )          << 7 |
-    ( !sign && !infOrNaN && !subnormalOrZero ) << 6 |
-    ( !sign && subnormalOrZero && !fracZero )  << 5 |
-    ( !sign && subnormalOrZero && fracZero )   << 4 |
-    ( isNaN &&  isSNaN )                       << 8 |
-    ( isNaN && !isSNaN )                       << 9;
-}
-
-static inline uint_fast16_t f64_classify( float64_t a )
-{
-    union ui64_f64 uA;
-    uint_fast64_t uiA;
-
-    uA.f = a;
-    uiA = uA.ui;
-
-    uint_fast16_t infOrNaN = expF64UI( uiA ) == 0x7FF;
-    uint_fast16_t subnormalOrZero = expF64UI( uiA ) == 0;
-    bool sign = signF64UI( uiA );
-    bool fracZero = fracF64UI( uiA ) == 0;
-    bool isNaN = isNaNF64UI( uiA );
-    bool isSNaN = softfloat_isSigNaNF64UI( uiA );
-
-    return
-        (  sign && infOrNaN && fracZero )          << 0 |
-        (  sign && !infOrNaN && !subnormalOrZero ) << 1 |
-        (  sign && subnormalOrZero && !fracZero )  << 2 |
-        (  sign && subnormalOrZero && fracZero )   << 3 |
-        ( !sign && infOrNaN && fracZero )          << 7 |
-        ( !sign && !infOrNaN && !subnormalOrZero ) << 6 |
-        ( !sign && subnormalOrZero && !fracZero )  << 5 |
-        ( !sign && subnormalOrZero && fracZero )   << 4 |
-        ( isNaN &&  isSNaN )                       << 8 |
-        ( isNaN && !isSNaN )                       << 9;
-}
-#endif
 
 
 // Integer multiplication routines

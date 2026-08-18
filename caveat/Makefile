@@ -9,8 +9,8 @@ CAVA := $(HOME)
 endif
 
 #MINUS_O := -g -Ofast -Wswitch
-MINUS_O := -g -Ofast -Wswitch -DDEBUG
-#MINUS_O := -g -O0 -Wswitch -DDEBUG
+#MINUS_O := -g -Ofast -Wswitch -DDEBUG
+MINUS_O := -g -O0 -Wswitch -DDEBUG
 
 
 HEADERS := options.h opcodes.h caveat.h hart.h
@@ -19,9 +19,9 @@ libfiles := options.o instructions.o loader.o decoder.o proxy_syscall.o interpre
 bins := caveat.o gdblink.o $(libfiles)
 
 # Compiling options
-CXXFLAGS := -g $(MINUS_O) -I$(CAVA)/include/softfloat
+CXXFLAGS := -g $(MINUS_O)
 
-LIBS := $(CAVA)/lib/libsoftfloat.a
+LIBS := 
 LDFLAGS := -Wl,-Ttext=70000000 -static -Wl,--no-relax
 #LDFLAGS := -Wl,-Ttext=70000000
 

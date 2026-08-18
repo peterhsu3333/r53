@@ -8,6 +8,21 @@
 #include "options.h"
 #include "opcodes.h"
 
+/*
+ * Word size of simulated processor.
+ */
+#define XLEN 64
+
+#if XLEN==32
+typedef  int32_t  xlen_t;
+typedef uint32_t uxlen_t;
+#elif XLEN==64
+typedef  int64_t  xlen_t;
+typedef uint64_t uxlen_t;
+#else
+#error "XLEN must be either 32 or 64"
+#endif
+
 #define dbmsg(fmt, ...)		       { fprintf(stderr, fmt, ##__VA_ARGS__); fprintf(stderr, "\n"); }
 #define die(fmt, ...)                  { fprintf(stderr, fmt, ##__VA_ARGS__); fprintf(stderr, "\n\n"); abort(); }
 #define dieif(bad, fmt, ...)  if (bad) { fprintf(stderr, fmt, ##__VA_ARGS__); fprintf(stderr, "\n\n"); abort(); }
@@ -26,14 +41,17 @@ extern const uint64_t stop_after[];
 extern ISA_bv_t this_isa;
 const  ISA_bv_t ISA_G = ISA_I|ISA_M|ISA_A|ISA_F|ISA_D;
 
-#define GPREG	0
-#define FPREG	(GPREG+32)
-#define VPREG	(FPREG+32)
-#define VMREG	(VPREG+32)
+/*
+ * RISC-V scalar registers.
+ */
+#define NOREG	0		// alias register x0 to streamline simulator
+#define GPREG	0		// x registers 1-31
+#define FPREG	(GPREG+32)	// f registers 0-31
+#define SCALAR_REGS (FPREG+32)	// total number of scalar registers
 
-//#define NOREG	0xFF
-#define NOREG	0		// big overhaul to streamline code
-
+/*
+ * Decoded RISC-V instruction.
+ */
 struct alignas(8) Insn_t {
   Opcode_t op_code;
   uint8_t op_rd;
@@ -48,20 +66,16 @@ struct alignas(8) Insn_t {
   };
   void setimm(int16_t v) { op.imm=(v<<1)|0x1; }
 public:
+  bool compressed() const { return op_code <= Last_Compressed_Opcode; }
   bool longimmed() const { return (op.imm & 0x1) == 0; }
   long immed() const { return longimmed() ? op_longimm : op.imm>>1; }
 
   Opcode_t opcode() const { return op_code; }
   uint rd()  const { return op_rd; }
   uint rs1() const { return op_rs1; }
-  
-  //uint rs2() const { return longimmed() ? NOREG : op.rs2; }
-  //uint rs3() const { return longimmed() ? NOREG : op.rs3; }
   uint rs2() const { return op.rs2; } // resume previous
   uint rs3() const { return op.rs3; }
   
-  bool compressed() const { return op_code <= Last_Compressed_Opcode; }
-
   friend Insn_t decoder(uintptr_t pc);
   friend void substitute_cas(uintptr_t pc, Insn_t* i3);
 };
@@ -71,18 +85,18 @@ Insn_t decoder(uintptr_t pc);
 
 /*
   The Translation Cache is an array of 64-bit slots.  A slot can be a translated
-  instruction, a basic block header (2 words), or a branch target pointer.  Translated
-  instructions are described above.  Each basic block begins with a header
+  instruction, a basic block header (2 words), or a branch target pointer.
+  Translated instructions are described above.  Each basic block begins with a header
   (defind below) followed by one or more translated instructions.  Each basic block
   is terminated by a link pointer to the next basic block's header.
   
   Links are always confirmed by computed branch target pc.  Thus they act as branch
   predictors for jump-register instructions.  Basic blocks that end in a conditional
-  branch have two pointers, the branch-taken target followed by the fall-thru target.
+  branch have two pointers, the fall-thru target followed by the branch-taken target.
 */
 
 struct alignas(8) Header_t {
-  uintptr_t addr;		// basic block beginning address
+  xlen_t addr;			// basic block beginning address
   bool conditional	:  1;	// end in conditional branch
   unsigned count	:  7;	// number of instructions
   unsigned length	:  8;	// number of 16-bit parcels

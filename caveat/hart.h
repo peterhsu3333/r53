@@ -2,58 +2,30 @@
   Copyright (c) 2021 Peter Hsu.  All Rights Reserved.  See LICENCE file for details.
 */
 
-extern "C" {
-#include "softfloat.h"
-#include "softfloat_types.h"
-};
-
 extern option<> conf_gdb;
 extern option<bool> conf_show;
 
 
-struct pctrace_t {
-  uintptr_t pc;
-  long val;
-  Insn_t i;
-};
-
-#define PCTRACEBUFSZ  32
-struct Debug_t {
-  pctrace_t trace[PCTRACEBUFSZ];
-  int cursor;
-  Debug_t() { cursor=0; }
-  pctrace_t get();
-#ifdef DEBUG
-  void insert(pctrace_t pt);
-  void insert(long pc, Insn_t i);
-  void addval(long val);
-  void print();
-#else
-  void insert(pctrace_t pt) { }
-  void insert(long pc, Insn_t i) { }
-  void addval(long val) { }
-  void print() { }
-#endif
-};
-
-
-
-
-
-typedef int64_t		sreg_t;
-typedef uint64_t	reg_t;
-typedef float128_t	freg_t;
 
 /*
-  Processor status register
+  RISC-V processor state.
 */
+union reg_t {
+  xlen_t  x;			// signed integer view
+  uxlen_t u;			// unsigned integer view
+  float   f;			// single-precision float view
+  double  d;			// double-precision float view
+  xlen_t  operator=(xlen_t  e) { x=e; return x; }
+  uxlen_t operator=(uxlen_t e) { x=e; return x; }
+  float   operator=(float   e) { f=e; return x; }
+  double  operator=(double  e) { d=e; return x; }
+};
 
 struct processor_state_t {
-  reg_t  xrf[32];
-  freg_t frf[32];
-
-  unsigned fflags;
-  unsigned frm;
+  xlen_t pc;			// program counter
+  reg_t reg[SCALAR_REGS];	// all scalar registers
+  uint16_t fflags;		// floating point status flags
+  uint16_t frm;			// floating point rounding mode
 };
 
 
@@ -62,11 +34,11 @@ struct insn_t {
   insn_t(uint64_t x) { bits=x; }
 };
 
-#define READ_REG(n)   s.xrf[n]
-#define READ_FREG(n)  s.frf[(n)-FPREG]
+#define READ_REG(n)   s.reg[n]
+#define READ_FREG(n)  s.reg[n]
 
-#define WRITE_REG(n, v)   s.xrf[n] = (v)
-#define WRITE_FREG(n, v)  s.frf[(n)-FPREG] = (v)
+#define WRITE_REG(n, v)   s.reg[n] = (v)
+#define WRITE_FREG(n, v)  s.reg[n] = (v)
 
 #define CSR_FFLAGS 0x1
 #define CSR_FRM 0x2
@@ -112,17 +84,18 @@ class hart_t {
   friend void terminate_threads();
   friend int clone_thread(hart_t* child);
   friend void exit_func();
+
+  static thread_local Header_t mismatch_header;
+  static thread_local Header_t* mismatch_target;
+  static thread_local Header_t** target;
     
 public:
-  processor_state_t s;
+  processor_state_t s;		// includes pc
   long _executed;		// number of instructions
-  uintptr_t pc;
-
-
-
+  //  Header_t* bb;			// basic block cooresponding to pc
+  //  Insn_t* i;			// predecoded instruction at pc
   
   Tcache_t tcache;
-  Debug_t debug;
   
   simfunc_t simulator;		// function pointer for simulation
   clonefunc_t clone;		// function pointer just for clone system call
@@ -133,14 +106,14 @@ public:
   hart_t(hart_t* p);
   ~hart_t();
 
-  Header_t* find_bb(uintptr_t pc);
-  void default_interpreter();
-  bool single_step(uintptr_t& xpc, Insn_t& insn, uint64_t& val);
+  Header_t* find_bb(xlen_t pc);
+  bool run_basic_block(reg_t* values);
+  bool execute_instruction(Insn_t insn, reg_t* ap);
+  
   void print(uintptr_t pc, Insn_t* i, FILE* out =stderr);
   long executed() { return _executed; }
   void count_insn(int n =1) { _executed += n; }
   long flushed() { return tcache.flushed(); }
-  void debug_print() { debug.print(); }
 
   static hart_t* list() { return _list; }
   hart_t* next() { return _next; }
@@ -148,34 +121,34 @@ public:
   static hart_t* find(int tid); // hart given Linux thread ID
   static int num_harts() { return _num_harts; }
 
-  reg_t get_csr(int which, insn_t insn, bool write, bool peek =0);
-  reg_t get_csr(int which) { return get_csr(which, insn_t(0), false, true); }
-  void set_csr(int which, reg_t val);
+  xlen_t get_csr(int which, insn_t insn, bool write, bool peek =0);
+  xlen_t get_csr(int which) { return get_csr(which, insn_t(0), false, true); }
+  void set_csr(int which, xlen_t val);
 
-  template<typename op>	uint64_t csr_func(uint64_t what, op f) {
-    uint64_t old = get_csr(what);
+  template<typename op>	xlen_t csr_func(xlen_t what, op f) {
+    xlen_t old = get_csr(what);
     set_csr(what, f(old));
     return old;
   }
-  template<class T> bool cas(long r1, T replace, T expect, uintptr_t*& ap)
+  template<class T> bool cas(long r1, T replace, T expect, reg_t*& ap)
   {
     T* ptr = (T*)r1;
     T oldval = __sync_val_compare_and_swap(ptr, expect, replace);
-    *ap++ = (uintptr_t)ptr;
+    *ap++ = (xlen_t)ptr;
     return (oldval != expect);
   }
-  template<typename op>	int32_t amo_int32(uintptr_t a, op f, uintptr_t*& ap) {
+  template<typename op>	int32_t amo_int32(xlen_t a, op f, reg_t*& ap) {
     int32_t lhs, *ptr = (int32_t*)a;
     do lhs = *ptr;
     while (!__sync_bool_compare_and_swap(ptr, lhs, f(lhs)));
-    *ap++ = (uintptr_t)ptr;
+    *ap++ = (xlen_t)ptr;
     return lhs;
   }
-  template<typename op>	int64_t amo_int64(uintptr_t a, op f, uintptr_t*& ap) {
+  template<typename op>	int64_t amo_int64(xlen_t a, op f, reg_t*& ap) {
     int64_t lhs, *ptr = (int64_t*)a;
     do lhs = *ptr;
     while (!__sync_bool_compare_and_swap(ptr, lhs, f(lhs)));
-    *ap++ = (uintptr_t)ptr;
+    *ap++ = (xlen_t)ptr;
     return lhs;
   }
 };

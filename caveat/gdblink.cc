@@ -30,8 +30,8 @@ uintptr_t gdb_text, gdb_data, gdb_bss;
 
 static int lastGdbSignal = 0;
 static hart_t* gdb_cpu;
-static uintptr_t* gdb_pc;
-static long* gdb_reg;
+static xlen_t* gdb_pc;
+static reg_t* gdb_reg;
 
 //long gdbNumContinue = -1;	/* program started by 'c' */
 long gdbNumContinue = 0;	/* program started by 'c' */
@@ -529,8 +529,8 @@ void controlled_by_gdb(const char* host_port, hart_t* cpu)
   //  abort();
 
   gdb_cpu = cpu;
-  gdb_pc = &cpu->pc;
-  gdb_reg = (long*)cpu->s.xrf;
+  gdb_pc = &cpu->s.pc;
+  gdb_reg = (reg_t*)cpu->s.reg;
 
   msg("Opening TCP link to GDB\n");
   OpenTcpLink(host_port);
@@ -554,19 +554,14 @@ void controlled_by_gdb(const char* host_port, hart_t* cpu)
       ProcessGdbException();
       goto cleanup;
     }
-
+    // BAD BAD BAD!
+#if 0
     //    signal(SIGTRAP, signal_handler);
     uintptr_t xpc, val;
-    Insn_t insn;
-    do {
-      //      if (conf_show) {
-      //	Insn_t i = decoder(*gdb_pc);
-      //	labelpc(*gdb_pc);
-      //	disasm(*gdb_pc, &i);
-      //      }
-    } while (!cpu->single_step(xpc, insn, val));
-    lastGdbSignal = SIGTRAP;
-    ProcessGdbException();
+    while (1) {
+      cpu->single_step();
+    }
+#endif
   cleanup:
     //    sigaction(SIGSEGV, &sigsegv_buf, 0);
     //    sigaction(SIGBUS,  &sigbus_buf,  0);
