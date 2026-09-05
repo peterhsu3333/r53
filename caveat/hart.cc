@@ -320,6 +320,7 @@ long default_riscv_syscall(hart_t* h, long a0)
   
 void substitute_cas(uintptr_t pc, Insn_t* i3)
 {
+  dbmsg("substitute_cas pc=%lx\n", pc);
   dieif(i3->opcode()!=Op_sc_w && i3->opcode()!=Op_sc_d, "0x%lx no SC found in substitute_cas()", pc);
 
   Insn_t i2 = decoder(pc-4);

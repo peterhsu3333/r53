@@ -17,16 +17,14 @@ option<int> conf_history("history", 1000, "Cycles remembered for display");
 
 
 core_t::core_t(int argc, const char* argv[], const char* envp[])
-  : hart_t(argc, argv, envp)
+  : hart_t(argc, argv, envp),
+    iu("iu", conf_iu()),
+    fpu("fpu", conf_iu()),
+    mem("mem", conf_iu())
 {
   busy = 0LL;
-  iu   = new pipeline_t("IU",  conf_iu());
-  fpu  = new pipeline_t("FPU", conf_fpu());
-  mem  = new pipeline_t("MEM", conf_mem());
   issued = 0;
-  history_length = conf_history();
-  history = new history_t[history_length];
-  memset(history, 0, history_length*sizeof(history_t));
+  history = new history_t[HISTORY];
 }
 
 
@@ -54,17 +52,17 @@ bool core_t::issue(history_t* h)
   ATTR_bv_t attr = ATTR[insn.opcode()];
   pipeline_t* unit;
   if (attr == 0)		// integer operation most common
-    unit = iu;
+    unit = &iu;
   else if (attr & ATTR_fp)
-    unit = fpu;
+    unit = &fpu;
   else if (attr & (ATTR_ld | ATTR_st | ATTR_rmw))
-    unit = mem;
+    unit = &mem;
   else				// everything else goes to integer unit
-    unit = iu;
+    unit = &iu;
   int latency = unit->depth;
 
   // enter into appropriate pipeline
-  unit->pipe[cycle % unit->depth] = h;
+  unit->stage[cycle % unit->depth] = h;
   unit->countdown[cycle % unit->depth] = latency;
 
   // issue instruction, immediate execution in simulator
@@ -81,11 +79,11 @@ bool core_t::issue(history_t* h)
 void core_t::clock_pipeline(pipeline_t* unit)
 {
   for (int k=0; k<unit->depth; ++k) {
-    if (unit->pipe[k] == 0)
+    if (unit->stage[k] == 0)
       continue;
     if (--unit->countdown[k] == 0) {
-      busy &= ~(1LL << unit->pipe[k]->insn.op_rd);
-      unit->pipe[k] = 0;	// indicate unused
+      busy &= ~(1LL << unit->stage[k]->insn.op_rd);
+      unit->stage[k] = 0;	// indicate unused
     }
   }
 }

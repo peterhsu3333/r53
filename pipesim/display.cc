@@ -11,22 +11,44 @@ option<int> conf_framerate("framerate",  20000, "Display framerate in microsecon
 static long long stop_cycle = 0;	// when to stop free running
 
 
-void paint_instructions(WINDOW* w, int y, int x, int lines,
-			history_t history[], int history_length, long long now)
+void paint_instruction(WINDOW* win, int y, int x, history_t* h)
 {
+  char buf[256];
+  int len = slabelpc(buf, h->pc);
+  sdisasm(buf+len, h->pc, &h->insn);
+  wmove(win, y, x);
+  wprintw(win, "%7lld %c [%16lx] %s", h->cycle, h->label, h->val, buf);
+}
+
+void paint_pipeline(WINDOW* win, pipeline_t& pipe)
+{
+  wprintw(win, "%s[", pipe.name);
+  for (int k=0; k<pipe.depth; ++k) {
+    int i = pipe.index(k);
+    char c = ' ';
+    if (pipe.stage[i])
+      c = pipe.stage[i]->label;
+    wprintw(win, "%c", c);
+  }
+  wprintw(win, "] ");
+}
+
+void paint_state(WINDOW* win, core_t* cpu)
+{
+  wclear(win);
+  wmove(win, 0, 0);
+  paint_pipeline(win, cpu->iu);
+  paint_pipeline(win, cpu->mem);
+  paint_pipeline(win, cpu->fpu);
+  wmove(win, 2, 0);
+  long now = cycle;
+  int lines = LINES - 2;
   for (int k=0; k<lines-3; ++k) {
     if (--now < 0)		// current cycle time not yet executed
       break;
-    history_t* h = &history[now % history_length];
-    //    if (h == 0)
-    //      continue;
-    char buf[256];
-    int len = slabelpc(buf, h->pc);
-    sdisasm(buf+len, h->pc, &h->insn);
-    wmove(w, y+now%lines, x);
-    //wprintw(w, "%7lld %lx, %s", h->cycle, h->pc, buf);
-    wprintw(w, "%7lld %c [%16lx] %s", h->cycle, h->label, h->val, buf);
+    paint_instruction(win, now%lines + 2, 0, &cpu->history[now % HISTORY]);
   }
+  //  wrefresh(win);
 }
  
 void interactive(core_t* cpu)
@@ -39,47 +61,45 @@ void interactive(core_t* cpu)
   noecho();
   nodelay(stdscr, true);
 
+  WINDOW** snapshot = new WINDOW*[HISTORY];
+  for (int k=0; k<HISTORY; ++k)
+    snapshot[k] = newwin(LINES, COLS, 0, 0);
+
   int ch;			// key pressed
   int number = 0;		// entered from keyboard
   long framerate = conf_framerate();
-  int behind = 0;		// showing the past
+  int behind = 1;		// showing the past
 
   while (1) {			// infinite loop
 
     // loop until any key pressed or target cycle reached
     while ((ch=getch()) == ERR) {
       if (cycle <= stop_cycle) {
-#if 0
 	// advance clock cycle
-	cpu->clock_pipeline(cpu->iu);
-	cpu->clock_pipeline(cpu->fpu);
-	cpu->clock_pipeline(cpu->mem);
-#endif
-	history_t* h = &cpu->history[cycle % cpu->history_length];
+	cpu->clock_pipeline(&cpu->iu);
+	cpu->clock_pipeline(&cpu->fpu);
+	cpu->clock_pipeline(&cpu->mem);
+	
+	history_t* h = &cpu->history[cycle % HISTORY];
 	h->cycle = cycle;
-
-#if 0
-	//h->label = makelabel();
+	h->pc = cpu->s.pc;
+	h->insn = decoder(cpu->s.pc);
 	h->label = cpu->executed() % 26 + 'A';
-	cpu->single_step(h->pc, h->insn, h->val);
+	reg_t value[2];
+	cpu->execute_instruction(h->insn, value);
+	h->val = value[0].x;
+	paint_state(snapshot[cycle % HISTORY], cpu);
 	++cycle;
-#endif
-	
-	
-	//if (!cpu->issue(h))
-	//  ++cycle;
-	clear();
-	paint_instructions(stdscr, 1, 0, LINES-1, cpu->history, cpu->history_length, cycle-behind);
-	refresh();
       }
+      redrawwin(snapshot[(cycle-behind) % HISTORY]);
+      wrefresh(snapshot[(cycle-behind) % HISTORY]);
       if (framerate)
 	usleep(framerate);
     }
     stop_cycle = 0;
     framerate = conf_framerate();
-    clear();
-    paint_instructions(stdscr, 1, 0, LINES-1, cpu->history, cpu->history_length, cycle-behind);
-    refresh();
+    redrawwin(snapshot[(cycle-behind) % HISTORY]);
+    wrefresh(snapshot[(cycle-behind) % HISTORY]);
     
     switch (ch) {
     case 'q':			// quit
@@ -87,32 +107,30 @@ void interactive(core_t* cpu)
       return;
     case 'b':			// go back
       dieif(behind<0, "behind<0");
-      if (behind < cpu->history_length && (cycle-behind) > 0)
+      if (behind < HISTORY && (cycle-behind) > 0)
 	++behind;
-      clear();
-      paint_instructions(stdscr, 1, 0, LINES-1, cpu->history, cpu->history_length, cycle-behind);
-      refresh();
+      redrawwin(snapshot[(cycle-behind) % HISTORY]);
+      wrefresh(snapshot[(cycle-behind) % HISTORY]);
       break;
     case 'f':			// go forward
       dieif(behind<0, "behind<0");
-      if (--behind < 0) {
+      if (--behind <= 0) {
 	stop_cycle = cycle;
-	behind = 0;
+	behind = 1;
       }
-      clear();
-      paint_instructions(stdscr, 1, 0, LINES-1, cpu->history, cpu->history_length, cycle-behind);
-      refresh();
+      redrawwin(snapshot[(cycle-behind) % HISTORY]);
+      wrefresh(snapshot[(cycle-behind) % HISTORY]);
       break;
     case '0'...'9':
       number = 10*number + (ch-'0');
       continue;			// don't reset number
     case 'c':			// continue free running
       stop_cycle = number ? number : LLONG_MAX;
-      behind = 0;
+      behind = 1;
       break;
     case 'C':			// continue free running
       stop_cycle = number ? number : LLONG_MAX;
-      behind = 0;
+      behind = 1;
       framerate = 0;
       break;
     }
