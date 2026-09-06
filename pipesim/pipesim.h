@@ -1,6 +1,5 @@
 
 extern long long cycle;		// current time
-extern int insn_issued;
 
 
 /*
@@ -15,8 +14,8 @@ struct history_t {
   char label;			// printable tag
 };
 
-const int HISTORY = 256;
-const int max_pipe_depth = 20;
+const int HISTORY = 128;
+const int max_pipe_depth = 16;
 
 struct pipeline_t {
   history_t* stage[max_pipe_depth];
@@ -38,9 +37,9 @@ struct core_t : public hart_t {
   void clock_pipeline(pipeline_t* unit);
   bool issue(history_t* h);
 
-  long issued;
   history_t* history;
   friend void simulator(hart_t* h, Header_t* bb, uintptr_t* ap);
+  void showreg(WINDOW* win, int r, char& sep);
 };
 
 

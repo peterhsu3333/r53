@@ -4,20 +4,55 @@
 
 #include "caveat.h"
 #include "hart.h"
-#include "display.h"
+#include "pipesim.h"
 
 option<int> conf_framerate("framerate",  20000, "Display framerate in microseconds");
 
 static long long stop_cycle = 0;	// when to stop free running
 
+void core_t::showreg(WINDOW* win, int r, char& sep)
+{
+  if (r != NOREG) {
+    wprintw(win, "%c", sep);
+    if ((1LL<<r) & busy) wattron(win, A_REVERSE);
+    wprintw(win, "%s", reg_name[r]);
+    if ((1LL<<r) & busy) wattroff(win, A_REVERSE);
+    sep = ',';
+  }
+}
 
-void paint_instruction(WINDOW* win, int y, int x, history_t* h)
+void wdisasm(WINDOW* win, uintptr_t pc, const Insn_t* i, core_t* cpu)
+{
+  int n = 0;
+  if (i->opcode() == Op_ZERO) {
+    wprintw(win,  "Nothing here");
+    return;
+  }
+  uint32_t b = *(uint32_t*)pc;
+  if (i->compressed())
+    wprintw(win, "    %04x  ", b&0xFFFF);
+  else
+    wprintw(win, "%08x  ",     b);
+  wprintw(win, "%-23s", op_name[i->opcode()]);
+  char sep = ' ';
+  cpu->showreg(win, i->rd(), sep);
+  cpu->showreg(win, i->rs1(), sep);
+  if (i->longimmed())
+    wprintw(win, "%c%ld", sep, i->immed());
+  else {
+    cpu->showreg(win, i->rs2(), sep);
+    cpu->showreg(win, i->rs3(), sep);
+    wprintw(win, "%c%ld", sep, i->immed());
+  }
+}
+
+void paint_instruction(WINDOW* win, int y, int x, history_t* h, core_t* cpu)
 {
   char buf[256];
-  int len = slabelpc(buf, h->pc);
-  sdisasm(buf+len, h->pc, &h->insn);
+  slabelpc(buf, h->pc);
   wmove(win, y, x);
   wprintw(win, "%7lld %c [%16lx] %s", h->cycle, h->label, h->val, buf);
+  wdisasm(win, h->pc, &h->insn, cpu);
 }
 
 void paint_pipeline(WINDOW* win, pipeline_t& pipe)
@@ -33,22 +68,43 @@ void paint_pipeline(WINDOW* win, pipeline_t& pipe)
   wprintw(win, "] ");
 }
 
+void paint_busy_regs(WINDOW* win, uint64_t busy)
+{
+  char first[65], second[65];
+  for (int r=0; r<64; ++r) {
+    if (busy & (1LL<<r)) {
+      second[r] = r%10 + '0';
+      first[r] = r<10 ? ' ' : (r/10)+'0';
+    }
+    else
+      first[r] = second[r] = ' ';
+  }
+  first[64] = second[64] = 0;
+  wprintw(win, "%s\n%s", first, second);
+}
+
 void paint_state(WINDOW* win, core_t* cpu)
 {
+  int lines = 0;
   wclear(win);
   wmove(win, 0, 0);
+  wprintw(win, "%7lld ", cycle);
   paint_pipeline(win, cpu->iu);
   paint_pipeline(win, cpu->mem);
   paint_pipeline(win, cpu->fpu);
-  wmove(win, 2, 0);
+  ++lines;
+  //  wmove(win, lines, 0);
+  //  paint_busy_regs(win, cpu->busy);
   long now = cycle;
-  int lines = LINES - 2;
-  for (int k=0; k<lines-3; ++k) {
-    if (--now < 0)		// current cycle time not yet executed
-      break;
-    paint_instruction(win, now%lines + 2, 0, &cpu->history[now % HISTORY]);
+  int i = (cpu->executed()-1) % HISTORY;
+  history_t* h = &cpu->history[i];
+  for (int k=0; --now>=0 && k<LINES-lines-3; ++k) {
+    if (h->cycle == now) {
+      paint_instruction(win, now%(LINES-lines-3)+lines, 0, h, cpu);
+      i = (i - 1 + HISTORY) % HISTORY;
+      h = &cpu->history[i];
+    }
   }
-  //  wrefresh(win);
 }
  
 void interactive(core_t* cpu)
@@ -79,20 +135,13 @@ void interactive(core_t* cpu)
 	cpu->clock_pipeline(&cpu->iu);
 	cpu->clock_pipeline(&cpu->fpu);
 	cpu->clock_pipeline(&cpu->mem);
-	
-	history_t* h = &cpu->history[cycle % HISTORY];
-	h->cycle = cycle;
-	h->pc = cpu->s.pc;
-	h->insn = decoder(cpu->s.pc);
-	h->label = cpu->executed() % 26 + 'A';
-	reg_t value[2];
-	cpu->execute_instruction(h->insn, value);
-	h->val = value[0].x;
-	paint_state(snapshot[cycle % HISTORY], cpu);
 	++cycle;
+	history_t* h = &cpu->history[cpu->executed() % HISTORY];
+	cpu->issue(h);
+	paint_state(snapshot[(cycle-behind) % HISTORY], cpu);
+	redrawwin(snapshot[(cycle-behind) % HISTORY]);
+	wrefresh(snapshot[(cycle-behind) % HISTORY]);
       }
-      redrawwin(snapshot[(cycle-behind) % HISTORY]);
-      wrefresh(snapshot[(cycle-behind) % HISTORY]);
       if (framerate)
 	usleep(framerate);
     }

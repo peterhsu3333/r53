@@ -14,8 +14,6 @@ clean:
 pipesim:  $(OBJS)
 	g++ $(OBJS) $(LIBS) $(LDFLAGS) -o pipesim
 
-pipesim.o:  pipesim.cc display.h
-display.o:  display.cc display.h
-#	g++ pipesim.cc -o pipesim.o
+pipesim.o display.o:  pipesim.h
 
 

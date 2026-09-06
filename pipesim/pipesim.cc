@@ -3,15 +3,14 @@
 
 #include "caveat.h"
 #include "hart.h"
-#include "display.h"
+#include "pipesim.h"
 
 long long cycle = 0;		// current time
-int insn_issued=  0;
 
 
-option<int> conf_iu ("iu",  1, "Integer unit latency");
-option<int> conf_fpu("fpu", 3, "Floating point unit latency");
-option<int> conf_mem("mem", 4, "Memory unit latency");
+option<int> conf_iu ("iu",  3, "Integer unit latency");
+option<int> conf_fpu("fpu", 1, "Floating point unit latency");
+option<int> conf_mem("mem", 10, "Memory unit latency");
 
 option<int> conf_history("history", 1000, "Cycles remembered for display");
 
@@ -19,11 +18,10 @@ option<int> conf_history("history", 1000, "Cycles remembered for display");
 core_t::core_t(int argc, const char* argv[], const char* envp[])
   : hart_t(argc, argv, envp),
     iu("iu", conf_iu()),
-    fpu("fpu", conf_iu()),
-    mem("mem", conf_iu())
+    fpu("fpu", conf_fpu()),
+    mem("mem", conf_mem())
 {
   busy = 0LL;
-  issued = 0;
   history = new history_t[HISTORY];
 }
 
@@ -32,7 +30,7 @@ int makelabel()
 {
   static long counter = 0;
   int label = counter++ % (2*26);
-  return label < 26 ? label+'A' : label+'a';
+  return label<26 ? label+'A' : label-26+'a';
 }
 
 bool core_t::issue(history_t* h)
@@ -45,8 +43,8 @@ bool core_t::issue(history_t* h)
   if (! insn.longimmed())
     regs |= 1LL << insn.op.rs2 | 1LL << insn.op.rs3;
   regs &= ~1LL;			// ignore NOREG==0
-  //if (regs & busy)
-  //  return false;
+  if (regs & busy)
+    return false;
 
   // assign functional unit
   ATTR_bv_t attr = ATTR[insn.opcode()];
@@ -62,28 +60,31 @@ bool core_t::issue(history_t* h)
   int latency = unit->depth;
 
   // enter into appropriate pipeline
-  unit->stage[cycle % unit->depth] = h;
-  unit->countdown[cycle % unit->depth] = latency;
+  unit->stage[cycle % max_pipe_depth] = h;
+  unit->countdown[cycle % max_pipe_depth] = latency;
 
   // issue instruction, immediate execution in simulator
-  h->cycle = cycle;
+  h->cycle = cycle - 1;		// note!
   h->label = makelabel();
-
+  h->pc = s.pc;
+  h->insn = insn;
   reg_t values[2];
   execute_instruction(insn, values);
-  busy |= 1LL << insn.op_rd;	// mark output register busy
+  h->val = values[0].x;
   
+  busy |= 1LL << insn.op_rd;	// mark output register busy
+  busy &= ~1LL;			// but x0 always not busy
   return true;
 }
 
 void core_t::clock_pipeline(pipeline_t* unit)
 {
   for (int k=0; k<unit->depth; ++k) {
-    if (unit->stage[k] == 0)
+    if (unit->stage[unit->index(k)] == 0)
       continue;
-    if (--unit->countdown[k] == 0) {
-      busy &= ~(1LL << unit->stage[k]->insn.op_rd);
-      unit->stage[k] = 0;	// indicate unused
+    if (--unit->countdown[unit->index(k)] == 0) {
+      busy &= ~(1LL << unit->stage[unit->index(k)]->insn.op_rd);
+      unit->stage[unit->index(k)] = 0;	// indicate unused
     }
   }
 }
