@@ -121,8 +121,8 @@ void hart_t::print(uintptr_t pc, Insn_t* i, FILE* out)
   }
   else
     fprintf(out, "%4s[%016lx] ", reg_name[i->rd()], s.reg[i->rd()].x);
-  labelpc(pc, stdout);
-  disasm(pc, i, "\n", stdout);
+  labelpc(pc, out);
+  disasm(pc, i, "\n", out);
 }
 
 
@@ -320,9 +320,10 @@ long default_riscv_syscall(hart_t* h, long a0)
   
 void substitute_cas(uintptr_t pc, Insn_t* i3)
 {
-  dbmsg("substitute_cas pc=%lx\n", pc);
+  //dbmsg("substitute_cas pc=%lx\n", pc);
   dieif(i3->opcode()!=Op_sc_w && i3->opcode()!=Op_sc_d, "0x%lx no SC found in substitute_cas()", pc);
 
+#if 0
   Insn_t i2 = decoder(pc-4);
   if (i2.opcode() != Op_bne)
     i2 = decoder(pc-2);
@@ -330,7 +331,17 @@ void substitute_cas(uintptr_t pc, Insn_t* i3)
 
   Insn_t i1 = decoder(pc-4 - (i2.compressed() ? 2 : 4));
   dieif(i1.opcode()!=Op_lr_w && i1.opcode()!=Op_lr_d, "0x%lx substitute_cas called without LR", pc);
+#endif
   
+  // first try short branch version
+  Insn_t i2 = decoder(pc-2);
+  if (i2.opcode() != Op_c_bnez) {
+    i2 = decoder(pc-4);		// long branch version
+    dieif(i2.opcode() != Op_bne, "0x%lx instruction before SC not bne/bnez", pc);
+  }
+  Insn_t i1 = decoder(pc-4 - (i2.opcode()==Op_c_bnez ? 2 : 4));
+  dieif(i3->opcode()==Op_sc_w && i1.opcode()!=Op_lr_w ||
+	i3->opcode()==Op_sc_d && i1.opcode()!=Op_lr_d, "lr/sc not same width");
   // pattern found, check registers
   int load_reg = i1.rd();
   int addr_reg = i3->rs1();
@@ -338,7 +349,6 @@ void substitute_cas(uintptr_t pc, Insn_t* i3)
   int newv_reg = i3->rs2();
   int flag_reg = i3->rd();
   dieif(i1.rs1()!=addr_reg || i2.rs1()!=load_reg, "0x%lx CAS pattern incorrect registers", pc);
-  
   // pattern is good
   // note rd, rs1, rs2 stay the same
   i3->op_code = (i3->opcode()==Op_sc_w) ? Op_cas_w : Op_cas_d;

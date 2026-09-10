@@ -1,4 +1,4 @@
-w!#  Opcode	Assembler	Attributes		     Instruction Format				Register Fields	C++ Semantics
+#  Opcode	Assembler	Attributes		     Instruction Format				Register Fields	C++ Semantics
 
 # RVC Compressed Instruction Set, Quadrant 0
 
@@ -14,13 +14,13 @@ w!#  Opcode	Assembler	Attributes		     Instruction Format				Register Fields	C++
 # RVC Compressed Instruction Set, Quadrant 1
 
    c.addi	rd		C			     "000 {-5}   ..... {4:0}       01"		lrd,lrd,-,-	"wrd(r1 + imm)"
-   c.addiw	rd		64,C			     "001 {-5}   ..... {4:0}       01"		wrd,lrd,-,-	"wrd(int32_t(r1) + int32_t(imm))"
+   c.addiw	rd		64,C			     "001 {-5}   ..... {4:0}       01"		wrd,wrd,-,-	"wrd(int32_t(r1) + int32_t(imm))"
    c.jal	-		32,C,uj,>		     "001 {-11|4|9:8|10|6|7|3:1|5} 01"		1,-,-,-		"{ wrd(s.pc+2); jump(s.pc+imm) }"
    c.li		rd		C			     "010 {-5}   ..... {4:0}       01"		lrd,-,-,-	"wrd(imm)"
    c.addi16sp	-		C		     	     "011 {-9}   00010 {4|6|8:7|5} 01"		2,2,-,-		"wrd(r1+imm)"
    c.lui	rd		C			     "011 {-17}  ..... {16:12}     01"		lrd,-		"wrd(imm)"
-   c.srli	rd		C			     "100 {5}   00 ... {4:0}       01"		lc1,lc1,-,-	"wrd(uint64_t(r1) >> imm)"
-   c.srai	rd		C			     "100 {5}   01 ... {4:0}       01"		lc1,lc1,-,-	"wrd( int64_t(r1) >> imm)"
+   c.srli	rd		C			     "100 {5}   00 ... {4:0}       01"		lc1,lc1,-,-	"wrd(u1 >> imm)"
+   c.srai	rd		C			     "100 {5}   01 ... {4:0}       01"		lc1,lc1,-,-	"wrd(r1 >> imm)"
    c.andi	rd		C			     "100 {-5}  10 ... {4:0}       01"		lc1,lc1,-,-	"wrd(r1 & imm)"
    c.sub	rd,rs2		C			     "100 0     11 ...      00 ... 01"		lc1,lc1,lc2,-	"wrd(r1 - r2)"
    c.xor	rd,rs2		C			     "100 0     11 ...      01 ... 01"		lc1,lc1,lc2,-	"wrd(r1 ^ r2)"
@@ -34,7 +34,7 @@ w!#  Opcode	Assembler	Attributes		     Instruction Format				Register Fields	C++
 
 # RVC Compressed Instruction Set, Quadrant 1
 
-   c.slli	rd		C			     "000 {5}    ..... {4:0}       10"		lrd,lrd,-,-	"wrd(uint64_t(r1) << imm)"
+   c.slli	rd		C			     "000 {5}    ..... {4:0}       10"		lrd,lrd,-,-	"wrd(r1 << imm)"
    c.fldsp	fd		C,D,ld			     "001 {5}    ..... {4:3|8:6}   10"		drd,2,-,-	"wdd(LOAD(double,  r1+imm))"
    c.lwsp	rd		64,C,ld			     "010 {5}    ..... {4:2|7:6}   10"		wrd,2,-,-	"wrd(LOAD(int32_t, r1+imm))"
    c.flwsp	rd		32,C,F,ld		     "011 {5}    ..... {4:2|7:6}   10"		frd,2,-,-	"wfd(LOAD(float,   r1+imm))"
@@ -53,12 +53,13 @@ w!#  Opcode	Assembler	Attributes		     Instruction Format				Register Fields	C++
 
 # RV32I Base Instruction Set
 
-   lui		d,u		I		"{-31:12}                      ..... 01101 11"		lrd,-		"wrd(   imm)"
+   lui		d,u		I		"{-31:12}                      ..... 01101 11"		lrd,-		"wrd(     imm)"
    auipc	d,u		I		"{-31:12}                      ..... 00101 11"		lrd,-		"wrd(s.pc+imm)"
 
-   j		a		I,uj,>		"{-20|10:1|11|19:12}           00000 11011 11"		lrd,-		"           jump(s.pc+imm)"
+   j		a		I,uj,>		"{-20|10:1|11|19:12}           00000 11011 11"		lrd,-		"             jump(s.pc+imm)"
    jal		d,a		I,uj,>		"{-20|10:1|11|19:12}           ..... 11011 11"		lrd,-		"wrd(s.pc+4); jump(s.pc+imm)"
-   ret		d,s		I,uj,>		"{-11:0}           ..... 000   00000 11001 11"		-,ls1,-,-	"reg_jump((r1+imm)&~1L)"
+   ret		d,s		I,uj,>		"{-11:0}           00001 000   00000 11001 11"		-,1,-,-		"reg_jump((r1+imm)&~1L)"
+   jr		d,s		I,uj,>		"{-11:0}           ..... 000   00000 11001 11"		-,ls1,-,-	"reg_jump((r1+imm)&~1L)"
    jalr		d,s		I,uj,>		"{-11:0}           ..... 000   ..... 11001 11"		lrd,ls1,-,-	"{ long npc=(r1+imm)&~1L; wrd(s.pc+4); reg_jump(npc); }"
 
    beq		s,t,p		I,cj,>		"{-12|10:5}  ..... ..... 000 {4:1|11} 1100011"		-,ls1,ls2,-	"branch(r1 == r2, s.pc+imm, s.pc+4)"
@@ -80,16 +81,16 @@ w!#  Opcode	Assembler	Attributes		     Instruction Format				Register Fields	C++
    addi		d,s,j		I		"{-11:0}           ..... 000   ..... 00100 11"		lrd,ls1,-,-	"wrd(r1 +  imm)"
    slti		d,s,j		I		"{-11:0}           ..... 010   ..... 00100 11"		lrd,ls1,-,-	"wrd(r1 <  imm)"
    sltiu	d,s,j		I		"{-11:0}           ..... 011   ..... 00100 11"		lrd,ls1,-,-	"wud(u1 < uimm)"
-   xori		d,s,j		I		"{-11:0}           ..... 100   ..... 00100 11"		lrd,ls1,-,-	"wud(u1 ^ uimm)"
-   ori		d,s,j		I		"{-11:0}           ..... 110   ..... 00100 11"		lrd,ls1,-,-	"wud(u1 | uimm)"
-   andi		d,s,j		I		"{-11:0}           ..... 111   ..... 00100 11"		lrd,ls1,-,-	"wud(u1 & uimm)"
-   slli		d,s,>		I		"000000      {5:0} ..... 001   ..... 00100 11"		lrd,ls1,-,-	"wud(u1 << imm)"
+   xori		d,s,j		I		"{-11:0}           ..... 100   ..... 00100 11"		lrd,ls1,-,-	"wud(r1 ^  imm)"
+   ori		d,s,j		I		"{-11:0}           ..... 110   ..... 00100 11"		lrd,ls1,-,-	"wud(r1 |  imm)"
+   andi		d,s,j		I		"{-11:0}           ..... 111   ..... 00100 11"		lrd,ls1,-,-	"wud(r1 &  imm)"
+   slli		d,s,>		I		"000000      {5:0} ..... 001   ..... 00100 11"		lrd,ls1,-,-	"wrd(r1 << imm)"
    srli		d,s,>		I		"000000      {5:0} ..... 101   ..... 00100 11"		lrd,ls1,-,-	"wud(u1 >> imm)"
    srai		d,s,>		I		"010000      {5:0} ..... 101   ..... 00100 11"		lrd,ls1,-,-	"wrd(r1 >> imm)"
 
    add		d,s,t		I		"0000000     ..... ..... 000   ..... 01100 11"		lrd,ls1,ls2,-	"wrd(r1 + r2)"
    sub		d,s,t		I		"0100000     ..... ..... 000   ..... 01100 11"		lrd,ls1,ls2,-	"wrd(r1 - r2)"
-   sll		d,s,t		I		"0000000     ..... ..... 001   ..... 01100 11"		lrd,ls1,ls2,-	"wrd(u1 << u2)"
+   sll		d,s,t		I		"0000000     ..... ..... 001   ..... 01100 11"		lrd,ls1,ls2,-	"wrd(r1 << r2)"
    slt		d,s,t		I		"0000000     ..... ..... 010   ..... 01100 11"		lrd,ls1,ls2,-	"wrd(r1 <  r2)"
    sltu		d,s,t		I		"0000000     ..... ..... 011   ..... 01100 11"		lrd,ls1,ls2,-	"wrd(u1 <  u2)"
    xor		d,s,t		I		"0000000     ..... ..... 100   ..... 01100 11"		lrd,ls1,ls2,-	"wrd(u1 ^  u2)"
@@ -113,18 +114,18 @@ b
 # RV64I Base Instruction Set (in addition to RV32I)
 
    lwu		d,o(s)		64,I,ld		"{-11:0}           ..... 110   ..... 00000 11"		wurd,ls1,-,-	"wrd(LOAD(uint32_t, r1+imm))"
-   ld		d,o(s)		64,I,ld		"{-11:0}           ..... 011   ..... 00000 11"		lulrd,ls1,-,-	"wrd(LOAD(int64_t,  r1+imm))"
+   ld		d,o(s)		64,I,ld		"{-11:0}           ..... 011   ..... 00000 11"		lurd,ls1,-,-	"wrd(LOAD(int64_t,  r1+imm))"
    sd		t,q(s)		64,I,st		"{-11:5}     ..... ..... 011   {4:0} 01000 11"		-,ls1,ls2,-	"STORE(int64_t, r1+imm, r2)"
 
    addiw	d,s,j		64,I		"{-11:0}           ..... 000   ..... 00110 11"		wrd,ws1,-,-	"wrd( int32_t(r1) +  int32_t(imm))"
-   slliw	d,s,<		64,I		"0000000     {4:0} ..... 001   ..... 00110 11"		wrd,ws1,-,-	"wrd(uint32_t(r1) << imm)"
-   srliw	d,s,<		64,I		"0000000     {4:0} ..... 101   ..... 00110 11"		wrd,ws1,-,-	"wrd(uint32_t(r1) >> imm)"
-   sraiw	d,s,<		64,I		"0100000     {4:0} ..... 101   ..... 00110 11"		wrd,ws1,-,-	"wrd( int32_t(r1) >> imm)"
+   slliw	d,s,<		64,I		"0000000     {4:0} ..... 001   ..... 00110 11"		wrd,ws1,-,-	"wrd( int32_t(r1) << int32_t(imm))"
+   srliw	d,s,<		64,I		"0000000     {4:0} ..... 101   ..... 00110 11"		wrd,ws1,-,-	"wrd(uint32_t(r1) >> int32_t(imm))"
+   sraiw	d,s,<		64,I		"0100000     {4:0} ..... 101   ..... 00110 11"		wrd,ws1,-,-	"wrd( int32_t(r1) >> int32_t(imm))"
 
    addw		d,s,t		64,I		"0000000     ..... ..... 000   ..... 01110 11"		wrd,ws1,ws2,-	"wrd( int32_t(r1) +   int32_t(r2))"
    subw		d,s,t		64,I		"0100000     ..... ..... 000   ..... 01110 11"		wrd,ws1,ws2,-	"wrd( int32_t(r1) -   int32_t(r2))"
-   sllw		d,s,t		64,I		"0000000     ..... ..... 001   ..... 01110 11"		wrd,ws1,ws2,-	"wrd(uint32_t(r1) << uint32_t(r2))"
-   srlw		d,s,t		64,I		"0000000     ..... ..... 101   ..... 01110 11"		wrd,ws1,ws2,-	"wrd(uint32_t(r1) >> uint32_t(r2))"
+   sllw		d,s,t		64,I		"0000000     ..... ..... 001   ..... 01110 11"		wrd,ws1,ws2,-	"wrd( int32_t(r1) <<  int32_t(r2))"
+   srlw		d,s,t		64,I		"0000000     ..... ..... 101   ..... 01110 11"		wrd,ws1,ws2,-	"wrd(uint32_t(r1) >>  int32_t(r2))"
    sraw		d,s,t		64,I		"0100000     ..... ..... 101   ..... 01110 11"		wrd,ws1,ws2,-	"wrd( int32_t(r1) >>  int32_t(r2))"
 
 # RV32M Standard Extension
@@ -173,7 +174,7 @@ b
    amomaxu.d	d,t,0(s)	64,A,amo,rmw,>	"11100 {1:0} ..... ..... 011   ..... 01011 11"		lrd,ls1,ls2,-	"wrd(amo_int64(r1, [&](uint64_t lhs) { return std::max(lhs, (uint64_t)r2); }, ap))"
 
 # Internal instructions to emulate Compare-And-Swap
-   cas.w	d,t,0(s),r	A,amo,rmw,>	"..... 10    ..... ..... 111   ..... 11111 11"		wrd,ls1,ws2,ws3	"wrd(cas32(r1, r2, r3, ap))"
+   cas.w	d,t,0(s),r	A,amo,rmw,>	"..... 10    ..... ..... 111   ..... 11111 11"		wrd,ls1,ws2,ls3	"wrd(cas32(r1, r2, r3, ap))"
    cas.d	d,t,0(s),r	64,A,amo,rmw,>	"..... 11    ..... ..... 111   ..... 11111 11"		lrd,ls1,ls2,ls3	"wrd(cas64(r1, r2, r3, ap))"
 
 # RV32F Standard Extension
@@ -285,3 +286,8 @@ b
    fmv.x.d	d,S		D		"11100 01    00000 ..... 000   ..... 10100 11"		lrd,ds1,-,-	"wrd(r1)"
    fmv.d.x	D,s		D		"11110 01    00000 ..... 000   ..... 10100 11"		drd,ls1,-,-	"wrd(r1)"
 
+
+
+# CAVA Extensions
+
++  repeat	s,q		I,>		"{8:5} 000   00000 ..... 001   {4:0} 11111 11"		-,ls1,-,-	"dorepeat(r1, imm)"

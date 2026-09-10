@@ -3,6 +3,24 @@ import os
 import re
 import json
 
+from dataclasses import dataclass
+
+@dataclass
+class InsnStruct:
+    name:	str
+    asm:	str
+    attr:	str
+    code:	str
+    mask:	str
+    compressed:	bool
+    immed:	str
+    longimm:	bool
+    action:	str
+    regspecs:	tuple
+    regtypes:	tuple
+
+instruction_struct = {}
+
 opcode_line = re.compile(r'^([ ]|\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+\"(.*)\"\s+(\S+)\s+\"(.*)\"')
 #reglist_field = re.compile(r'^(\S+)\[(\d+):(\d+)\](\+\d+)?$')
 
@@ -126,12 +144,15 @@ for tuple in compressed+standard:
 
     # Parse register list
     rv = []
+    tv = []
     for r in reglist.split(','):
         if r == '-':
             rv.append('NOREG')
+            tv.append('-')
             continue
         elif r[0].isnumeric():
             rv.append(r)
+            tv.append('l')
             continue
         m = regspecpat.match(r)
         if not m:
@@ -151,14 +172,38 @@ for tuple in compressed+standard:
             numregspecs += 1
         t = 'regspec[{:d}](b)'.format(regspec[t])
         rv.append(t)
+        tv.append(ty)
     while len(reglist) < 4:
         rv.append('NOREG')
+        tv.append('-')
 
-    instructions[opcode] = (opname, asm, attr, code, mask, bytes, immed, immtyp, rv, action)
+    instructions[opcode] = (opname, asm, attr, code, mask, bytes, immed, immtyp, rv, action, tv)
+
     insn_in_order.append(opcode)
     if bytes == 2:
         last_compressed_opcode = opcode
 #    print(instructions[opcode])
+
+    if bytes == 4:
+        bytes = False
+    else:
+        bytes = True
+    if immtyp == 0:
+        immtyp = False
+    else:
+        immtyp = True
+    instruction_struct[opcode] = InsnStruct(name = opname,
+                                            asm = asm,
+                                            attr = attr,
+                                            code = code,
+                                            mask = mask,
+                                            compressed = bytes,
+                                            immed = immed,
+                                            longimm = immtyp,
+                                            action = action,
+                                            regspecs = rv,
+                                            regtypes = tv)
+
 
 opcodes = ['ZERO'] + [key for key in instructions] + ['ILLEGAL', 'UNKNOWN']
 
@@ -169,7 +214,7 @@ diffcp('isa.json')
 ATTR = {}
 ISA  = {}
 for opcode, t in instructions.items():
-    (opname, asm, attr, code, mask, bytes, immed, immtyp, reglist, action) = t
+    (opname, asm, attr, code, mask, bytes, immed, immtyp, reglist, action, regtypes) = t
     for a in attr:
         if a == '-':
             continue
@@ -285,9 +330,7 @@ with open('newcode.tmp', 'w') as f:
     makelist(regspec, numregspecs, f, 'regspec')
     makelist(immspec, numimmspecs, f, 'immspec')
     for opcode in insn_in_order:
-        (opname, asm, attr, code, mask, bytes, immed, immtyp, reglist, action) = instructions[opcode]
-    #for opcode, t in instructions.items():
-    #    (opname, asm, attr, code, mask, bytes, immed, immtyp, reglist, action) = t
+        (opname, asm, attr, code, mask, bytes, immed, immtyp, reglist, action, regtypes) = instructions[opcode]
         if immtyp == 1:
             f.write('  if (match(b, {:s}, {:s}, {:15s}, i, {:15s}, {:15s}, {:15s})) return i;\n' \
                     .format(mask, code, opname, reglist[0], reglist[1], immed))
@@ -298,7 +341,7 @@ diffcp('../caveat/decoder.h')
 
 with open('newcode.tmp', 'w') as f:
     for opcode, t in instructions.items():
-        (opname, asm, attr, code, mask, bytes, immed, immtyp, reglist, action) = t
+        (opname, asm, attr, code, mask, bytes, immed, immtyp, reglist, action, regtypes) = t
         if 'spike' in attr:
             fini = 'break'
             if 'cj' in attr or 'uj' in attr:

@@ -105,7 +105,7 @@ static inline int get_prot(uint32_t p_flags)
 
 static void read_elf_symbols(const char* filename, uintptr_t bias)
 {
-  dbmsg("reading %s symbols, bias=0x%lx", filename, bias);
+  //dbmsg("reading %s symbols, bias=0x%lx", filename, bias);
   int fd = open(filename, O_RDONLY, 0);
   quitif(fd<0, "Unable to open ELF binary file \"%s\"\n", filename);
   Elf64_Ehdr eh;
@@ -128,7 +128,7 @@ static void read_elf_symbols(const char* filename, uintptr_t bias)
     dieif(lseek(fd, eh.e_shoff + i * sizeof(Elf64_Shdr), SEEK_SET)<0, "seek section header failed");
     dieif(read(fd, &shdr, sizeof shdr)<0, "read section header failed");
     if (strcmp(shstrtbl+shdr.sh_name, ".strtab") == 0) {
-      dbmsg("%s size %ld\n", shstrtbl+shdr.sh_name, shdr.sh_size);
+      //dbmsg("%s size %ld\n", shstrtbl+shdr.sh_name, shdr.sh_size);
       
     	//    if (strcmp(shstrtbl+shdr.sh_name, ".strtab") == 0 ||
 	//	strcmp(shstrtbl+shdr.sh_name, ".dynstr") == 0) {
@@ -148,7 +148,7 @@ static void read_elf_symbols(const char* filename, uintptr_t bias)
     
     if (strcmp(shstrtbl+shdr.sh_name, ".symtab") == 0) {
       long num_syms = shdr.sh_size / sizeof(Elf64_Sym);
-      dbmsg("%s num_syms=%ld", shstrtbl+shdr.sh_name, num_syms);
+      //dbmsg("%s num_syms=%ld", shstrtbl+shdr.sh_name, num_syms);
       //      Elf64_Sym symtbl[num_syms];
       dieif(lseek(fd, shdr.sh_offset, SEEK_SET)<0, "lseek symtbl failed");
       Elf64_Sym sb;
@@ -189,7 +189,7 @@ static uintptr_t hack_bias;
 
 static long load_elf_file(const char* file_name, uintptr_t bias, pinfo_t* info)
 {
-  dbmsg("Loading %s, bias=%lx", file_name, bias);
+  //dbmsg("Loading %s, bias=%lx", file_name, bias);
   int flags = MAP_FIXED | MAP_PRIVATE;
   ssize_t ehdr_size;
   size_t phdr_size;
@@ -378,7 +378,7 @@ static long initialize_stack(int argc, const char** argv, const char** envp, pin
   for (struct aux_t* auxv=(struct aux_t*)(&envp[envc+1]); auxv->key != AT_NULL; auxv++) {
     size_t value = auxv->value;
     switch (auxv->key) {
-
+#if 0
     case AT_EXECFN:	value = (size_t)argv[0]; break;
     case AT_PHDR:	value = phdrs; break;
     case AT_PHENT:	value = sizeof(Elf64_Phdr); break;
@@ -388,13 +388,14 @@ static long initialize_stack(int argc, const char** argv, const char** envp, pin
       // AT_FLAGS:
     case AT_ENTRY:	value = info->entry; break;
       // AT_NOTELF
-    case AT_UID:	break;
-    case AT_EUID:	break;
-    case AT_GID:	break;
+    case AT_UID:
+    case AT_EUID:
+    case AT_GID:
     case AT_EGID:	break;
-    case AT_CLKTCK:	break;
+      //case AT_CLKTCK:	break;
     case AT_PLATFORM:	value = (size_t)"riscv64"; break;
-      // AT_HWCAP
+    case AT_HWCAP:
+    case AT_HWCAP2: continue;
       // AT_FPUCW
       // AT_DCACHESIZE
       // AT_ICACHESIZE
@@ -402,6 +403,35 @@ static long initialize_stack(int argc, const char** argv, const char** envp, pin
     case AT_SECURE:	value = 0; break;
     case AT_RANDOM:	value = at_random; break;
     case AT_SYSINFO_EHDR: continue; /* No vDSO */
+      
+#else
+      
+    case AT_PAGESZ:	value = RISCV_PGSIZE; break;
+    case AT_PHDR:	value = phdrs; break;
+    case AT_PHENT:	value = sizeof(Elf64_Phdr); break;
+    case AT_PHNUM:	value = info->phnum; break;
+    case AT_ENTRY:	value = info->entry; break;
+      
+    case AT_SECURE:	value = 0; break;
+    case AT_RANDOM:	value = at_random; break;
+    case AT_EXECFN:	value = (size_t)argv[0]; break;
+    case AT_PLATFORM:	value = (size_t)"riscv64"; break;
+      
+    case AT_HWCAP:	  continue;
+    case AT_HWCAP2:	  continue;
+    case AT_SYSINFO_EHDR: continue; /* No vDSO */
+      
+    case AT_BASE:
+      if (at_base == 0)  continue;
+      value = at_base;
+      break;
+
+    case AT_UID:
+    case AT_EUID:
+    case AT_GID:
+    case AT_EGID:
+      break;
+#endif
       
     default:
       continue;
@@ -433,7 +463,7 @@ static long initialize_stack(int argc, const char** argv, const char** envp, pin
 long emulate_execve(const char* filename, int argc, const char* argv[], const char* envp[], xlen_t& pc)
 {
   pc = load_elf_binary(argv[0]);
-  dbmsg("interp.base=%lx", at_base);
+  //dbmsg("interp.base=%lx", at_base);
   return initialize_stack(argc, argv, envp, &current);
 }
 

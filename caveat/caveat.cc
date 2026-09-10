@@ -141,7 +141,7 @@ int main(int argc, const char* argv[], const char* envp[])
       reg_t values[2];
       xlen_t oldpc = mycpu->s.pc;
       mycpu->execute_instruction(insn, values);
-      mycpu->print(oldpc, &insn);
+      mycpu->print(oldpc, &insn, stderr);
     }
   }
   else {

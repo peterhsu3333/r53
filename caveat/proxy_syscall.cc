@@ -149,7 +149,7 @@ uintptr_t host_syscall(int sysnum, uintptr_t a0, uintptr_t a1, uintptr_t a2, uin
   case SYS_exit_group:
     goto stop;
     
-#if 0
+#if 1
   case SYS_brk:
     //retval = emulate_brk(a0, read_pc()>MEM_END ? &dl_linux_info : &prog_info);
     //fprintf(stderr, "current.brk = 0x%lx\n", current.brk);
@@ -168,11 +168,16 @@ uintptr_t host_syscall(int sysnum, uintptr_t a0, uintptr_t a1, uintptr_t a2, uin
 
 #if 1
   case SYS_open:
+    fprintf(stderr, "SYS_open %s", (char*)a0);
     a0 = (long)riscv_remap((char*)a0);
+    fprintf(stderr, " -> %s\n", (char*)a0);
     break;
-  case SYS_openat:
   case SYS_openat2:
+    fprintf(stderr, "Openat2\n");
+  case SYS_openat:
+    fprintf(stderr, "SYS_openat %s", (char*)a1);
     a1 = (long)riscv_remap((char*)a1);
+    fprintf(stderr, " -> %s\n", (char*)a1);
     break;
 #endif
     

@@ -20,6 +20,7 @@ bool hart_t::execute_instruction(Insn_t insn, reg_t* ap)
 {
   _executed++;
   s.reg[0].x = 0;
+  //fprintf(stderr, "%lx ", s.pc);
 #if 0
   labelpc(s.pc);
   disasm(s.pc, &insn);
@@ -28,8 +29,8 @@ bool hart_t::execute_instruction(Insn_t insn, reg_t* ap)
     Abbreviations to keep isa.def semantics short
   */
 
-#define imm	          insn.immed()
-#define uimm	(unsigned)insn.immed()
+#define imm	         insn.immed()
+#define uimm	(uxlen_t)insn.immed()
 #define wrd(e)	(*ap++)=s.reg[insn.rd()].x=(e)
 #define r1	s.reg[insn.rs1()].x
 #define r2	s.reg[insn.rs2()].x
@@ -61,9 +62,14 @@ bool hart_t::execute_instruction(Insn_t insn, reg_t* ap)
     //#define ebreak() return true
 #define ebreak() kill(tid(), SIGTRAP)
 
-#define branch(test, taken, fall)  { s.pc=(test)?(taken):(fall); return (test); }
-#define jump(npc)  { s.pc=(npc); return true; }
-#define reg_jump(npc)  { s.pc=(npc); return true; }
+  //#define do_return(jumped) fprintf(stderr, "%lx\n", s.reg[insn.rd()].x); return (jumped);
+#define do_return(jumped) return (jumped);
+
+#define branch(test, taken, fall)  { s.pc=(test)?(taken):(fall); do_return(test); }
+#define jump(npc)  { s.pc=(npc); do_return(true); }
+#define reg_jump(npc)  { s.pc=(npc); do_return(true); }
+
+#define dorepeat(x, y)
     
   switch (insn.opcode()) {
   case Op_ZERO:	die("Should never see Op_ZERO at pc=%lx", s.pc);
@@ -72,5 +78,5 @@ bool hart_t::execute_instruction(Insn_t insn, reg_t* ap)
   case Op_UNKNOWN:  die("Op_UNKNOWN opcode, i=%08x, pc=%lx", *(unsigned*)s.pc, s.pc);
   default:  die("undefined opcode, i=%08x, pc=%lx", *(unsigned*)s.pc, s.pc);
   }
-  return false;
+  do_return(false);
 }
