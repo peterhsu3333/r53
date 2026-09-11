@@ -19,9 +19,9 @@ libfiles := options.o instructions.o loader.o decoder.o proxy_syscall.o interpre
 bins := caveat.o gdblink.o $(libfiles)
 
 # Compiling options
-CXXFLAGS := -g $(MINUS_O)
+CXXFLAGS := -g $(MINUS_O) -I$(CAVA)/include/softfloat
 
-LIBS := 
+LIBS := $(CAVA)/lib/libsoftfloat.a
 LDFLAGS := -Wl,-Ttext=70000000 -static -Wl,--no-relax
 #LDFLAGS := -Wl,-Ttext=70000000
 

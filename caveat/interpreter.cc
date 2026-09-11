@@ -28,6 +28,9 @@ bool hart_t::execute_instruction(Insn_t insn, reg_t* ap)
   /*
     Abbreviations to keep isa.def semantics short
   */
+	
+#define LOAD(T, a)     *(T*)(*ap++=a)
+#define STORE(T, a, v) *(T*)(*ap++=a)=(v)
 
 #define imm	         insn.immed()
 #define uimm	(uxlen_t)insn.immed()
@@ -38,17 +41,14 @@ bool hart_t::execute_instruction(Insn_t insn, reg_t* ap)
 #define wud(e)	(*ap++)=s.reg[insn.rd()].u=(e)
 #define u1	s.reg[insn.rs1()].u
 #define u2	s.reg[insn.rs2()].u
-#define wfd(e)	(*ap++)=s.reg[insn.rd()].f=(e)
+#define wfd(e)	(*ap++)=s.reg[insn.rd()].raw=((uint64_t)-1<<32)|(e.v)
 #define f1	s.reg[insn.rs1()].f
 #define f2	s.reg[insn.rs2()].f
 #define f3	s.reg[insn.rs3()].f
-#define wdd(e)	(*ap++)=s.reg[insn.rd()].d=(e)
+#define wdd(e)	(*ap++)=s.reg[insn.rd()].raw=(e.v)
 #define d1	s.reg[insn.rs1()].d
 #define d2	s.reg[insn.rs2()].d
 #define d3	s.reg[insn.rs3()].d
-	
-#define LOAD(T, a)     *(T*)(*ap++=a)
-#define STORE(T, a, v) *(T*)(*ap++=a)=(v)
 
 #define load_reserved(T, a)         *(T*)(*ap++=a)
 #define store_conditional(T, a, v)  wrd( (*(T*)(*ap++=a)=(v), 0) )

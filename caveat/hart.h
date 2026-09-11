@@ -2,10 +2,13 @@
   Copyright (c) 2021 Peter Hsu.  All Rights Reserved.  See LICENCE file for details.
 */
 
+extern "C" {
+#include "softfloat.h"
+#include "softfloat_types.h"
+};
+
 extern option<> conf_gdb;
 extern option<bool> conf_show;
-
-
 
 /*
   RISC-V processor state.
@@ -13,12 +16,13 @@ extern option<bool> conf_show;
 union reg_t {
   xlen_t  x;			// signed integer view
   uxlen_t u;			// unsigned integer view
-  float   f;			// single-precision float view
-  double  d;			// double-precision float view
+  uint64_t raw;			// internal boxed floating point view
+  float64_t d;			// double precision FP view
+  float32_t f;			// single precision FP view
   xlen_t  operator=(xlen_t  e) { x=e; return x; }
   uxlen_t operator=(uxlen_t e) { x=e; return x; }
-  float   operator=(float   e) { f=e; return x; }
-  double  operator=(double  e) { d=e; return x; }
+  //uint64_t operator=(float32_t e) { raw=box(e.v); return raw; }
+  uint64_t operator=(float64_t e) { raw=    e.v ; return raw; }
 };
 
 struct processor_state_t {

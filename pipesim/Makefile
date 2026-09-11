@@ -1,8 +1,8 @@
 
-CXXFLAGS = -I$(HOME)/include/cava -g
+CXXFLAGS = -I$(HOME)/include/cava -I$(HOME)/include/softfloat -g
 
 OBJS = pipesim.o display.o
-LIBS = $(HOME)/lib/libcava.a 
+LIBS = $(HOME)/lib/libcava.a $(HOME)/lib/libsoftfloat.a 
 LDFLAGS = -Wl,-Ttext=70000000 -lncurses
 
 install:  pipesim

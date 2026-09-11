@@ -1,65 +1,80 @@
 /*
-  Copyright (c) 2023 Peter Hsu.  All Rights Reserved.  See LICENCE file for details.
+  Copyright (c) 2026 Peter Hsu.  All Rights Reserved.  See LICENCE file for details.
 */
-#include <cmath>
+
+extern "C" {
+#include "specialize.h"
+#include "internals.h"
+};
 
 
-#define RM ({ int rm = i->immed(); \
+#undef RM
+#define RM ({ int rm = insn.immed(); \
               if(rm == 7) rm = s.frm; \
               if(rm > 4) die("Illegal instruction"); \
               rm; })
-#undef RM
 
-#define srm
-#define sfx
+#define srm  softfloat_roundingMode = RM
+#define sfx  s.fflags |= softfloat_exceptionFlags
 
-#define boxf(x) (0xFFFFFFFF00000000L | (x))
 
-// RISC-V sign-injection and classify instructionsn
+/* Convenience wrappers to simplify softfloat code sequences */
 
-#define F32_SIGN ((unsigned       int)1 << 31)
-#define F64_SIGN ((unsigned long long)1 << 63)
+inline float32_t f32(uint32_t x) { float32_t r; r.v=x; return r; }
+inline float64_t f64(uint64_t x) { float64_t r; r.v=x; return r; }
 
-static inline unsigned int fsgnj_s(unsigned int a, unsigned int b, bool n, bool x)
+#define isBoxedF32(r) ((uint32_t)((r.raw >> 32) + 1) == 0)
+#define unboxF32(r) (isBoxedF32(r) ? r.f : defaultNaNF32UI)
+
+#define F32_SIGN ((uint32_t)1 << 31)
+#define F64_SIGN ((uint64_t)1 << 63)
+
+
+// RISC-V sign-injection instructions
+
+#define fsgnj_s(a, b, n, x) \
+  f32((a.v & ~F32_SIGN) | ((((x) ? a.v : (n) ? F32_SIGN : 0) ^ b.v) & F32_SIGN))
+
+#define fsgnj_d(a, b, n, x) \
+  f64((a.v & ~F64_SIGN) | ((((x) ? a.v : (n) ? F64_SIGN : 0) ^ b.v) & F64_SIGN))
+
+// RISC-V compliant FP min/max
+
+static inline float32_t fmin_s(float32_t f1, float32_t f2)
 {
-  return (a & ~F32_SIGN) | ((((x) ? a : (n) ? F32_SIGN : 0) ^ b) & F32_SIGN);
+  bool less = f32_lt_quiet(f1, f2) || (f32_eq(f1, f2) && (f1.v & F32_SIGN));
+  if (isNaNF32UI(f1.v) && isNaNF32UI(f2.v))
+    return f32(defaultNaNF32UI);
+  else
+    return less || isNaNF32UI(f2.v) ? f1 : f2;
 }
 
-static inline unsigned long long fsgnj_d(unsigned long long a, unsigned long long b, bool n, bool x)
+static inline float32_t fmax_s(float32_t f1, float32_t f2)
 {
-  return (a & ~F64_SIGN) | ((((x) ? a : (n) ? F64_SIGN : 0) ^ b) & F64_SIGN);
+  bool greater = f32_lt_quiet(f2, f1) || (f32_eq(f2, f1) && (f2.v & F32_SIGN));
+  if (isNaNF32UI(f1.v) && isNaNF32UI(f2.v))
+    return f32(defaultNaNF32UI);
+  else
+    return greater || isNaNF32UI(f2.v) ? f1 : f2;
 }
 
-static inline unsigned classify_s(float aa)
+static inline float64_t fmin_d(float64_t f1, float64_t f2)
 {
-  reg_t a;
-  a.f = aa;
-  int sign = a.u & F32_SIGN;
-  switch (std::fpclassify(aa)) {
-  case FP_INFINITE:	return sign ? 0 : 7;
-  case FP_NAN:		return            9;
-  case FP_SUBNORMAL:	return sign ? 2 : 5;
-  case FP_ZERO:		return sign ? 3 : 4;
-  case FP_NORMAL:
-  default:		return sign ? 1 : 6;
-  }
+  bool less = f64_lt_quiet(f1, f2) || (f64_eq(f1, f2) && (f1.v & F64_SIGN));
+  if (isNaNF64UI(f1.v) && isNaNF64UI(f2.v))
+    return f64(defaultNaNF64UI);
+  else
+    return less || isNaNF64UI(f2.v) ? f1 : f2;
 }
 
-static inline unsigned classify_d(double aa)
+static inline float64_t fmax_d(float64_t f1, float64_t f2)
 {
-  reg_t a;
-  a.d = aa;
-  int sign = a.u & F64_SIGN;
-  switch (std::fpclassify(aa)) {
-  case FP_INFINITE:	return sign ? 0 : 7;
-  case FP_NAN:		return            9;
-  case FP_SUBNORMAL:	return sign ? 2 : 5;
-  case FP_ZERO:		return sign ? 3 : 4;
-  case FP_NORMAL:
-  default:		return sign ? 1 : 6;
-  }
+  bool greater = f64_lt_quiet(f2, f1) || (f64_eq(f2, f1) && (f2.v & F64_SIGN));
+  if (isNaNF64UI(f1.v) && isNaNF64UI(f2.v))
+    return f64(defaultNaNF64UI);
+  else
+    return greater || isNaNF64UI(f2.v) ? f1 : f2;
 }
-
 
 // Integer multiplication routines
 
@@ -97,4 +112,3 @@ static inline int64_t mulhsu(int64_t a, uint64_t b)
   uint64_t res = mulhu(a < 0 ? -a : a, b);
   return negate ? ~res + (a * b == 0) : res;
 }
-
