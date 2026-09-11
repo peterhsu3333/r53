@@ -16,6 +16,22 @@
 #include "hart.h"
 #include "arithmetic.h"
 
+/*
+  int vl = insn.immed()&0x1f;
+  if (s.reg[rs1()].x < vl)
+    vl = s.reg[rs1()].x;
+  int rdv = last_insn.rd();
+  int rs1v = last_insn.rs1();
+  int rs2v = last_insn.rs2();
+  int rs3v = last_insn.rs3();
+  unsigned incmask = insn.immed()>>5);
+  for (int k=1; k<vl; ++k) {
+    if (incmask & (1<<0)) ++rdv;
+    if (incmask & (1<<1)) ++rs1v;
+    if (incmask & (1<<2)) ++rs2v;
+    if (incmask & (1<<3)) ++rs3v;
+*/  
+
 bool hart_t::execute_instruction(Insn_t insn, reg_t* ap)
 {
   _executed++;
@@ -69,7 +85,7 @@ bool hart_t::execute_instruction(Insn_t insn, reg_t* ap)
 #define jump(npc)  { s.pc=(npc); do_return(true); }
 #define reg_jump(npc)  { s.pc=(npc); do_return(true); }
 
-#define dorepeat(x, y)
+#define dorepeat(x, y) { fprintf(stderr, "repeat(%s, maxvl=%ld, regincs=0x%lx)\n", reg_name[insn.rs1()], insn.immed()&0x1f, insn.immed()>>5); exit(0); }
     
   switch (insn.opcode()) {
   case Op_ZERO:	die("Should never see Op_ZERO at pc=%lx", s.pc);

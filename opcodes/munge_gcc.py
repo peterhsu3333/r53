@@ -1,3 +1,5 @@
+exit(0)
+
 import sys
 import os
 import re
@@ -20,17 +22,20 @@ with open('isa.json', 'r') as f:
 # Make additions to riscv-opc.h files.
 #
 for fn in [repo+'gdb/include/opcode/riscv-opc.h', repo+'binutils/include/opcode/riscv-opc.h']:
+    found = False
     with open(fn, 'r') as s, open('newcode.tmp', 'w') as f:
         line = s.readline()
         while line:
             # First remove any old stuff
             if line == '/* CAVA begin */\n':
+                print(fn, ":  Removing old CAVA stuff");
                 line = s.readline()
                 while line != '/* CAVA end */\n':
                     line = s.readline()
                 line = s.readline()
             # Look for known place to make addition
             if line == '/* Unprivileged Counter/Timers CSR addresses.  */\n':
+                found = True
                 f.write('/* CAVA begin */\n')
                 for opcode in instructions:
                     (opname, asm, attr, code, mask, bytes, immed, immtyp, reglist, action, regtypes) = instructions[opcode]
@@ -42,23 +47,29 @@ for fn in [repo+'gdb/include/opcode/riscv-opc.h', repo+'binutils/include/opcode/
                 f.write('/* CAVA end */\n')
             f.write(line)
             line = s.readline()
-    diffcp(fn)
+    if found:
+        diffcp(fn)
+    else:
+        print(fn, ":  Did not find known place");
     
 #
 # Make additions to riscv-opc.c files.
 #
 for fn in [repo+'gdb/opcodes/riscv-opc.c', repo+'binutils/opcodes/riscv-opc.c']:
+    found = False
     with open(fn, 'r') as s, open('newcode.tmp', 'w') as f:
         line = s.readline()
         while line:
             # First remove any old stuff
             if line == '/* CAVA begin */\n':
+                print(fn, ":  Removing old CAVA stuff");
                 line = s.readline()
                 while line != '/* CAVA end */\n':
                     line = s.readline()
                 line = s.readline()
             # Look for known place to make addition
             if line == '/* Atomic memory operation instruction subset.  */\n':
+                found = True
                 f.write('/* CAVA begin */\n')
                 for opcode in instructions:
                     (opname, asm, attr, code, mask, bytes, immed, immtyp, reglist, action, regtypes) = instructions[opcode]
@@ -71,7 +82,10 @@ for fn in [repo+'gdb/opcodes/riscv-opc.c', repo+'binutils/opcodes/riscv-opc.c']:
                 f.write('/* CAVA end */\n')
             f.write(line)
             line = s.readline()
-    diffcp(fn)
+    if found:
+        diffcp(fn)
+    else:
+        print(fn, ":  Did not find known place");
 
 #
 # Generate assembly header file

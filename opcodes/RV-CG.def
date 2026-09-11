@@ -267,4 +267,4 @@ b
 
 # CAVA Extensions
 
-#+  repeat	s,q		I,>		"{8:5} 000   00000 ..... 001   {4:0} 11111 11"		-,ls1,-,-	"dorepeat(r1, imm)"
++  repeat	s,q		I,>		"{8:5} 000   00000 ..... 001   {4:0} 11111 11"		-,ls1,-,-	"dorepeat(r1, imm)"
