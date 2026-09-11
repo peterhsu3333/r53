@@ -193,9 +193,10 @@ b
    fdiv.s	D,S,T,m		F,fp		"00011 00    ..... ..... {2:0} ..... 10100 11"		frd,fs1,fs2,-	"srm; wfd(f32_div(f1, f2)); sfx"                                            
    fsqrt.s	D,S,m		F,fp		"01011 00    00000 ..... {2:0} ..... 10100 11"		frd,fs1,-,-	"srm; wfd(f32_sqrt(f1));         sfx"                                            
 
-   fsgnj.s	D,S,T		F,fp		"00100 00    ..... ..... 000   ..... 10100 11"		frd,fs1,fs2,-	"     wfd(fsgnj_s(f1, f2, false, false))"    
+   fmv.s	D,S,T		F,fp		"00100 00    ..... ..... 000   ..... 10100 11"		frd,fs1,fs2,-	"     wfd(fsgnj_s(f1, f2, false, false))"    
    fsgnjn.s	D,S,T		F,fp		"00100 00    ..... ..... 001   ..... 10100 11"		frd,fs1,fs2,-	"     wfd(fsgnj_s(f1, f2, true,  false))"    
-   fsgnjx.s	D,S,T		F,fp		"00100 00    ..... ..... 010   ..... 10100 11"		frd,fs1,fs2,-	"     wfd(fsgnj_s(f1, f2, false,  true))"    
+   fsgnjx.s	D,S,T		F,fp		"00100 00    ..... ..... 010   ..... 10100 11"		frd,fs1,fs2,-	"     wfd(fsgnj_s(f1, f2, false,  true))"
+   
    fmin.s	D,S,T		F,fp		"00101 00    ..... ..... 000   ..... 10100 11"		frd,fs1,fs2,-	"     wfd(fmin_s(f1, f2))"                   
    fmax.s	D,S,T		F,fp		"00101 00    ..... ..... 001   ..... 10100 11"		frd,fs1,fs2,-	"     wfd(fmax_s(f1, f2))"                   
    															                                                       
@@ -234,8 +235,10 @@ b
    fmul.d	D,S,T,m		D,fp		"00010 01    ..... ..... {2:0} ..... 10100 11"		drd,ds1,ds2,-	"srm; wdd(f64_mul(d1, d2)); sfx"                                            
    fdiv.d	D,S,T,m		D,fp		"00011 01    ..... ..... {2:0} ..... 10100 11"		drd,ds1,ds2,-	"srm; wdd(f64_div(d1, d2)); sfx"                                            
 
+   fmv.d	D,S,T		D,fp		"00100 01    ..... ..... 000   ..... 10100 11"		drd,ds1,ds2,-	"     wdd(fsgnj_d(d1, d2, false, false))"
    fsgnjn.d	D,S,T		D,fp		"00100 01    ..... ..... 001   ..... 10100 11"		drd,ds1,ds2,-	"     wdd(fsgnj_d(d1, d2, true,  false))"
    fsgnjx.d	D,S,T		D,fp		"00100 01    ..... ..... 010   ..... 10100 11"		drd,ds1,ds2,-	"     wdd(fsgnj_d(d1, d2, false,  true))"
+
    fmin.d	D,S,T		D,fp		"00101 01    ..... ..... 000   ..... 10100 11"		drd,ds1,ds2,-	"     wdd(fmin_d(d1, d2))"
    fmax.d	D,S,T		D,fp		"00101 01    ..... ..... 001   ..... 10100 11"		drd,ds1,ds2,-	"     wdd(fmax_d(d1, d2))"
 
