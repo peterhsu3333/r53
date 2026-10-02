@@ -1,0 +1,106 @@
+
+
+@ToP[3:0]
+?RoP/1				?BoP/1				ld.b		ld.h		ld.w(ld.f)	ld.d(ld.l)
+st.b		st.h		st.w		st.d(st.l)	ld.bu		ld.hu		ld.wu		auipc
+
+@BoP[5:3]
+blt		bltu		ble		bleu		beq		bne		j		call
+
+
+@RoP[11:6],bitreverse
+?UoP/3
+amocas.d	amocas.w	.		.		.		.		.		.
+.		.		.		.		.		.		.		.
+.		.		.		.		.		.		.		.
+
+
+# Vector memory operations (v=indexed, vs=strided)
+.		vs.lwu		vs.lhu		vs.lbu		vs.sd		vs.sw		vs.sh		vs.sb
+vs.ld		vs.lw		vs.lh		vs.lb		.		.		.		.
+.		v.lwu		v.lhu		v.lbu		v.sd		v.sw		v.sh		v.sb
+v.ld		v.lw		v.lh		v.lb		.		.		.		.
+
+?SoP/6		# 2 blocks
+?IoP/7		# 4 blocks
+
+#------------------------------	Middle of Table ------------------------------
+
+
+# Integer adder
+v.add		v.sub		v.slt		v.sltu		v.min		v.max		.		.
+v.addw		v.subw		v.adduw		v.subuw		v.minu		v.maxu		.		.
+vs.add		vs.sub		vs.slt		vs.sltu		vs.min		vs.max		.		.
+vs.addw		vs.subw		vs.adduw	vs.subuw	vs.minu		vs.maxu		.		.
+
+add		sub		slt		sltu		min		max		.		.
+addw		subw		adduw		subuw		minu		maxu		.		.
+mul		mulh		mulhu		mulhsu		mulw		.		.		.		# Integer multiplier
+div		divu		rem		remu		divw		divuw		remw		remuw		# Integer divier
+
+
+
+# Shifter and boolean unit
+v.srl		v.sll		v.sra		v.and		v.ror		v.rol		v.or		v.xor
+v.srlw		v.sllw		v.sraw		v.andn		v.rorw		v.rolw		v.orn		v.xnor
+vs.srl		vs.sll		vs.sra		vs.and		vs.ror		vs.rol		vs.or		vs.xor
+vs.srlw		vs.sllw		vs.sraw		vs.andn		vs.rorw		vs.rolw		vs.orn		vs.xnor
+
+srl		sll		sra		and		ror		rol		or		xor
+srlw		sllw		sraw		andn		rorw		rolw		orn		xnor
+sh1add		sh2add		sh3add		.		sh1add.wu	sh2add.wu	sh3add.wu	.		# Special integer ops
+bset		bclr		binv		bext		.		.		.		.
+
+
+# Floating point unit
+v.fadd.f	v.fsub.f	v.fmin.f	v.fmax.f	v.fadd.d	v.fsub.d	v.fmin.d	v.fmax.d
+v.flt.f		v.fle.f		v.feq.f		v.fmul.f	v.flt.d		v.fle.d		v.feq.d		v.fmul.d
+vs.fadd.f	vs.fsub.f	vs.fmin.f	vs.fmax.f	vs.fadd.d	vs.fsub.d	vs.fmin.d	vs.fmax.d
+vs.flt.f	vs.fle.f	vs.feq.f	vs.fmul.f	vs.flt.d	vs.fle.d	vs.feq.d	vs.fmul.d
+
+fadd.f		fsub.f		fmin.f		fmax.f		fadd.d		fsub.d		fmin.d		fmax.d
+flt.f		fle.f		feq.f		fmul.f		flt.d		fle.d		feq.d		fmul.d
+fdiv.f		.		fminm.f		fmaxm.f		fdiv.d		.		fminm.d		fmaxm.d		# Special FP ops
+fltq.f		fleq.f		.		.		fltq.d		fleq.d		.		.
+
+
+# Three-input instructions:  floating-point multiply-add, conditional selects
+selzr		.	      fmadd.f	    	fmadd.d		v.fmadd.f	v.fmadd.d	vs.fmadd.f	vs.fmadd.d
+selnz		.	      fmsub.f		fmsub.d		v.fmsub.f	v.fmsub.d	vs.fmsub.f	vs.fmsub.d
+.		.	      fnmsub.f		fnmsub.d	v.fnmsub.f	v.fnmsub.d	vs.fnmsub.f	vs.fnmsub.d
+.		.	      fnmadd.f		fnmadd.d	v.fnmadd.f	v.fnmadd.d	vs.fnmadd.f	vs.fnmadd.d
+
+
+./5		# Reserved for accumulator instructions, tensors, etc.
+
+
+@IoP[7:5]
+li		andi		ori		xori		addi		addiw		slti		sltui
+
+
+@SoP[9:6]
+srli		slli		srai		.		rori		.		bseti		bclri
+srliw		slliw		sraiw		slli.wu		roriw		.		binvi		bexti
+
+
+@UoP[15:9]
+ILLEGAL		jalr(jr)	.		.		.		.		.		.
+ecall		ebreak		.	fence		csrrs		csrrc		csrrw		fence.i
+./3		# Reserved for accumulator instructions
+./3
+
+v.fcvt.w.f	v.fcvt.uw.f	v.fcvt.l.f	v.fcvt.ul.f	v.fcvt.w.d	v.fcvt.uw.d	v.fcvt.l.d	v.fcvt.ul.d	
+v.fcvt.f.w	v.fcvt.f.uw	v.fcvt.f.l	v.fcvt.f.ul	v.fcvt.d.w	v.fcvt.d.uw	v.fcvt.d.l	v.fcvt.d.ul
+fcvt.w.f	fcvt.uw.f	fcvt.l.f	fcvt.ul.f	fcvt.w.d	fcvt.uw.d	fcvt.l.d	fcvt.ul.d	
+fcvt.f.w	fcvt.f.uw	fcvt.f.l	fcvt.f.ul	fcvt.d.w	fcvt.d.uw	fcvt.d.l	fcvt.d.ul
+
+v.neg		v.negw		v.not		v.mv		v.orcb		v.rev8		v.fclass.f	v.fclass.d
+v.sext.b	v.sext.h	v.sext.w	.		v.zext.b	v.zext.h	v.zext.w	.
+neg		negw		not		mv		orcb		rev8		fclass.f	fclass.d
+sext.b		sext.h		sext.w		.		zext.b		zext.h		zext.w		.
+
+v.clz		v.ctz		v.cpop		.		v.clzw		v.ctzw		v.cpopw		.
+.		.		.		.		.		.		.
+clz		ctz		cpop		.		clzw		ctzw		cpopw		.
+fsqrt.f		fsqrt.d		.		.		.		.		.		.
+
