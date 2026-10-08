@@ -1,106 +1,136 @@
 
+#
+# Top-level opcode (5 bits).  Displacement loads and stores, and hooks to subopcodes.  Also includes load upper immediate (lui) and
+# add upper immediate to pc (auipc) which creates the top 17 bits of an absolute or pc-relative 28-bit signed constant.  An upper
+# immediate constant can be added to 11-bit displacement of memory operations, the 11-bit offset of jalr and addi instructions.
+#
+@map ToP[4:0],bitreverse
+?RoP		?IoP		lwu/1				lhu/1				lbu/1
+sd/1				sw/1				sh/1				sb/1
+ld/1				lw/1				lh/1				lb/1
+?BoP/2								lui/1				auipc/1
 
-@ToP[3:0]
-?RoP/1				?BoP/1				ld.b		ld.h		ld.w(ld.f)	ld.d(ld.l)
-st.b		st.h		st.w		st.d(st.l)	ld.bu		ld.hu		ld.wu		auipc
-
-@BoP[5:3]
-blt		bltu		ble		bleu		beq		bne		j		call
-
-
-@RoP[11:6],bitreverse
-?UoP/3
-amocas.d	amocas.w	.		.		.		.		.		.
-.		.		.		.		.		.		.		.
-.		.		.		.		.		.		.		.
-
-
-# Vector memory operations (v=indexed, vs=strided)
-.		vs.lwu		vs.lhu		vs.lbu		vs.sd		vs.sw		vs.sh		vs.sb
-vs.ld		vs.lw		vs.lh		vs.lb		.		.		.		.
-.		v.lwu		v.lhu		v.lbu		v.sd		v.sw		v.sh		v.sb
-v.ld		v.lw		v.lh		v.lb		.		.		.		.
-
-?SoP/6		# 2 blocks
-?IoP/7		# 4 blocks
-
-#------------------------------	Middle of Table ------------------------------
+#
+# Branch opcodes (3 bits).  Includes jump and link register (jalr) which also encodes pc-relative (Y=a0) and jump without link (X=a0).
+# The target address is sum of register Y and 11-bit offset.  For branch instructions, if X or Y is a0 it is replaced by value zero.
+# If both X and Y are a0 they become special instructions as noted (rwcsr is read-write control status registers).  We put the special
+# instructions here because they cause pipeline flushes like branches and jumps.
+#
+@map BoP[5:3],bitreverse
+jr,j,jalr/1			beq,b		bne,fence	blt,fence.i	bge,ecall	ble,ebreak	bgt,rwcsr
 
 
-# Integer adder
-v.add		v.sub		v.slt		v.sltu		v.min		v.max		.		.
-v.addw		v.subw		v.adduw		v.subuw		v.minu		v.maxu		.		.
-vs.add		vs.sub		vs.slt		vs.sltu		vs.min		vs.max		.		.
-vs.addw		vs.subw		vs.adduw	vs.subuw	vs.minu		vs.maxu		.		.
-
-add		sub		slt		sltu		min		max		.		.
-addw		subw		adduw		subuw		minu		maxu		.		.
-mul		mulh		mulhu		mulhsu		mulw		.		.		.		# Integer multiplier
-div		divu		rem		remu		divw		divuw		remw		remuw		# Integer divier
-
-
-
-# Shifter and boolean unit
-v.srl		v.sll		v.sra		v.and		v.ror		v.rol		v.or		v.xor
-v.srlw		v.sllw		v.sraw		v.andn		v.rorw		v.rolw		v.orn		v.xnor
-vs.srl		vs.sll		vs.sra		vs.and		vs.ror		vs.rol		vs.or		vs.xor
-vs.srlw		vs.sllw		vs.sraw		vs.andn		vs.rorw		vs.rolw		vs.orn		vs.xnor
-
-srl		sll		sra		and		ror		rol		or		xor
-srlw		sllw		sraw		andn		rorw		rolw		orn		xnor
-sh1add		sh2add		sh3add		.		sh1add.wu	sh2add.wu	sh3add.wu	.		# Special integer ops
-bset		bclr		binv		bext		.		.		.		.
-
-
-# Floating point unit
-v.fadd.f	v.fsub.f	v.fmin.f	v.fmax.f	v.fadd.d	v.fsub.d	v.fmin.d	v.fmax.d
-v.flt.f		v.fle.f		v.feq.f		v.fmul.f	v.flt.d		v.fle.d		v.feq.d		v.fmul.d
-vs.fadd.f	vs.fsub.f	vs.fmin.f	vs.fmax.f	vs.fadd.d	vs.fsub.d	vs.fmin.d	vs.fmax.d
-vs.flt.f	vs.fle.f	vs.feq.f	vs.fmul.f	vs.flt.d	vs.fle.d	vs.feq.d	vs.fmul.d
-
-fadd.f		fsub.f		fmin.f		fmax.f		fadd.d		fsub.d		fmin.d		fmax.d
-flt.f		fle.f		feq.f		fmul.f		flt.d		fle.d		feq.d		fmul.d
-fdiv.f		.		fminm.f		fmaxm.f		fdiv.d		.		fminm.d		fmaxm.d		# Special FP ops
-fltq.f		fleq.f		.		.		fltq.d		fleq.d		.		.
-
-
-# Three-input instructions:  floating-point multiply-add, conditional selects
-selzr		.	      fmadd.f	    	fmadd.d		v.fmadd.f	v.fmadd.d	vs.fmadd.f	vs.fmadd.d
-selnz		.	      fmsub.f		fmsub.d		v.fmsub.f	v.fmsub.d	vs.fmsub.f	vs.fmsub.d
-.		.	      fnmsub.f		fnmsub.d	v.fnmsub.f	v.fnmsub.d	vs.fnmsub.f	vs.fnmsub.d
-.		.	      fnmadd.f		fnmadd.d	v.fnmadd.f	v.fnmadd.d	vs.fnmadd.f	vs.fnmadd.d
-
-
-./5		# Reserved for accumulator instructions, tensors, etc.
-
-
-@IoP[7:5]
+#
+# Opcodes with 11-bit signed immediates.  There are opcodes with unsigned 6-bit opcodes also but they are encoded together with RoP.
+#
+@map IoP[8:5]
 li		andi		ori		xori		addi		addiw		slti		sltui
+.		.		.		.		.		.		.		.
 
 
-@SoP[9:6]
-srli		slli		srai		.		rori		.		bseti		bclri
-srliw		slliw		sraiw		slli.wu		roriw		.		binvi		bexti
+#
+# The majority of opcodes are in this table.
+#
+@map RoP[13:5]		# 16 blocks
 
+# Scalar instructions R-fmt
+add		sub		slt		sltu		min		max		.		.		# integer adder
+addw		subw		adduw		subuw		minu		maxu		.		.
+sh1add		sh1add.wu	sh2add		sh2add.wu	sh3add		sh3add.wu	.		.
+.		.		.		.		.		.		.		.
 
-@UoP[15:9]
-ILLEGAL		jalr(jr)	.		.		.		.		.		.
-ecall		ebreak		.	fence		csrrs		csrrc		csrrw		fence.i
-./3		# Reserved for accumulator instructions
-./3
+srl		srlw		sll		sllw		sra		sraw		.		.		# shifter
+ror		rorw		rol		rorw		bset		bclr		binv		bext
+xnor		orn		and		andn		xnor		orn		xor		or		# logical unit
+.		.		.		.		.		.		.		.
 
-v.fcvt.w.f	v.fcvt.uw.f	v.fcvt.l.f	v.fcvt.ul.f	v.fcvt.w.d	v.fcvt.uw.d	v.fcvt.l.d	v.fcvt.ul.d	
-v.fcvt.f.w	v.fcvt.f.uw	v.fcvt.f.l	v.fcvt.f.ul	v.fcvt.d.w	v.fcvt.d.uw	v.fcvt.d.l	v.fcvt.d.ul
-fcvt.w.f	fcvt.uw.f	fcvt.l.f	fcvt.ul.f	fcvt.w.d	fcvt.uw.d	fcvt.l.d	fcvt.ul.d	
-fcvt.f.w	fcvt.f.uw	fcvt.f.l	fcvt.f.ul	fcvt.d.w	fcvt.d.uw	fcvt.d.l	fcvt.d.ul
-
-v.neg		v.negw		v.not		v.mv		v.orcb		v.rev8		v.fclass.f	v.fclass.d
-v.sext.b	v.sext.h	v.sext.w	.		v.zext.b	v.zext.h	v.zext.w	.
-neg		negw		not		mv		orcb		rev8		fclass.f	fclass.d
+neg		negw		.		.		.		.		.		.		# integer adder (unary)
+.		.		not		mv		orcb		rev8		fclass.f	fclass.d	# logical unit (unary)
+clz		ctz		cpop		.		clzw		ctzw		cpopw		.	
 sext.b		sext.h		sext.w		.		zext.b		zext.h		zext.w		.
 
-v.clz		v.ctz		v.cpop		.		v.clzw		v.ctzw		v.cpopw		.
-.		.		.		.		.		.		.
-clz		ctz		cpop		.		clzw		ctzw		cpopw		.
-fsqrt.f		fsqrt.d		.		.		.		.		.		.
+fmax.f		fmax.d		fmin.f		fmin.d		flt.f		flt.d		fle.f		fle.d		# FP adder
+fminm.f		fminm.d		fmaxm.f		fmaxm.d		fltq.f		fltq.d		fleq.f		fleq.d
+fadd.f		fadd.d		fsub.f		fsub.d		feq.f		feq.d		.		.
+.		.		.		.		.		.		.		.
 
+fcvt.w.f	fcvt.w.d	cvt.f.w		cvt.d.w		fcvt.l.f	fcvt.l.d	fcvt.f.l	fcvt.d.l	# FP adder (conversions)
+fcvt.uw.f	fcvt.uw.d	cvt.f.uw	cvt.d.uw	fcvt.ul.f	fcvt.ul.d	fcvt.f.ul	ft.d.ul
+fcvt.f.d	cvt.d.f		.		.		.		.		.		.
+fmul.f		fmul.d		fdif.f		fdiv.d		.		.		fsqrt.f		sqrt.d		# FP multiplier/divider
+
+
+
+# Scalar instructions with 6-bit unsigned immediates (S-fmt), and scalar instructions using integer multiplier/divider.
+# These instructions do not have vector equivalent.
+#
+srli		srliw		slli		slliw		srai		sraiw		xori		ori		# shifter
+rori		roriw		andi		.		bseti		bclri		binvi		bexti
+.		mul		.		.		mulhsu		mulw		mulh		mulhu		# Integer multiplier, FP divider
+div		divu		rem		remu		divw		divuw		remw		remuw		# Integer divider
+
+
+# 3-input mulply-add instructions.  We put scalar and vector together to save opcode space.
+
+fmadd.f		fmadd.d		fsub.f		fsub.d		fnmsub.f	fnmsub.d	fnmadd.f	fnmadd.d
+v.fmadd.f	v.fmadd.d	v.fsub.f	v.fsub.d	v.fnmsub.f	v.fnmsub.d	v.fnmadd.f	v.fnmadd.d
+vs.fmadd.f	vs.fmadd.d	vs.fsub.f	vs.fsub.d	vs.fnmsub.f	vs.fnmsub.d	vs.fnmadd.f	vs.fnmadd.d	# 3-input multiply-add instructions
+.		.		.		.		.		.		.		.
+
+
+# Vector memory operations.  These use the VS-fmt.
+.		v.lwu		v.lhu		v.lbu		v.sd		v.sw		v.sh		v.sb		# Vector strided memory ops
+v.ld		v.lw		v.lh		v.lb		.		.		.		.
+.		vs.lwu		vs.lhu		vs.lbu		vs.sd		vs.sw		vs.sh		vs.sb		# Vector indexed memory ops
+vs.ld		vs.lw		vs.lh		vs.lb		.		.		.		.
+
+
+
+#----------------------------------- Midpoint in Table -----------------------------------
+
+
+# Vector-vector instructions
+
+v.add		v.sub		v.slt		v.sltu		v.min		v.max		.		.
+v.addw		v.subw		v.adduw		v.subuw		v.minu		v.maxu		.		.
+v.sh1add	v.sh1add.wu	v.sh2add	v.sh2add.wu	v.sh3add	v.sh3add.wu	.		.
+.		.		.		.		.		.		.		.
+
+v.srl		v.srlw		v.sll		v.sllw		v.sra		v.sraw		.		.		# shifter
+v.ror		v.rorw		v.rol		v.rorw		v.bset		v.bclr		v.binv		v.bext
+v.xnor		v.orn		v.and		v.andn		v.xnor		v.orn		v.xor		v.or		# logical unit
+.		.		.		.		.		.		.		.
+
+v.fmax.f	v.fmax.d	v.fmin.f	v.fmin.d	v.flt.f		v.flt.d		v.fle.f		v.fle.d		# FP adder
+v.fminm.f	v.fminm.d	v.fmaxm.f	v.fmaxm.d	v.fltq.f	v.fltq.d	v.fleq.f	v.fleq.d
+v.fadd.f	v.fadd.d	v.fsub.f	v.fsub.d	v.feq.f		v.feq.d		.		.
+.		.		.		.		.		.		.		.
+
+v.neg		v.negw		.		.		.		.		.		.		# integer adder (unary)
+.		.		v.not		v.mv		v.orcb		v.rev8		v.fclass.f	v.fclass.d	# logical unit (unary)
+v.clz		v.ctz		v.cpop		.		v.clzw		v.ctzw		v.cpopw		.	
+v.sext.b	v.sext.h	v.sext.w	.		v.zext.b	v.zext.h	v.zext.w	.
+
+v.fcvt.w.f	v.fcvt.w.d	v.cvt.f.w	v.cvt.d.w	v.fcvt.l.f	v.fcvt.l.d	v.cvt.f.l	v.cvt.d.l	# FP adder (conversions)
+v.fcvt.uw.f	v.fcvt.uw.d	v.cvt.f.uw	v.cvt.d.uw	v.fcvt.ul.f	v.fcvt.ul.d	v.cvt.f.ul	v.cvt.d.ul
+v.fcvt.f.d	v.cvt.d.f	.		.		.		.		.		.
+v.fmul.f	v.fmul.d	v.fdiv.f	v.fdiv.d	.		.		v.fsqrt.f	v.sqrt.d	# FP multiplier/divider
+
+
+#
+# Vector-scalar instructions.
+#
+
+vs.add		vs.sub		vs.slt		vs.sltu		vs.min		vs.max		.		.
+vs.addw		vs.subw		vs.adduw	vs.subuw	vs.minu		vs.maxu		.		.
+vs.sh1add	vs.sh1add.wu	vs.sh2add	vs.sh2add.wu	vs.sh3add	vs.sh3add.wu	.		.
+.		.		.		.		.		.		.		.
+
+vs.srl		vs.srlw		vs.sll		vs.sllw		vs.sra		vs.sraw		.		.		# shifter
+vs.ror		vs.rorw		vs.rol		vs.rorw		vs.bset		vs.bclr		vs.binv		vs.bext
+vs.xnor		vs.orn		vs.and		vs.andn		vs.xnor		vs.orn		vs.xor		vs.or		# logical unit
+.		.		.		.		.		.		.		.
+
+vs.fmax.f	vs.fmax.d	vs.fmin.f	vs.fmin.d	vs.flt.f	vs.flt.d	vs.fle.f	vs.fle.d	# FP adder
+vs.fminm.f	vs.fminm.d	vs.fmaxm.f	vs.fmaxm.d	vs.fltq.f	vs.fltq.d	vs.fleq.f	vs.fleq.d
+vs.fadd.f	vs.fadd.d	vs.fsub.f	vs.fsub.d	vs.feq.f	vs.feq.d	.		.
