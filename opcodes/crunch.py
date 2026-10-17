@@ -104,6 +104,9 @@ with open(sys.argv[1]) as f:
                         if '/' in t:
                             opcode, span = t.split('/')
                         if opcode != '.':
+                            if opcode in mapping:
+                                print('Duplicate opcode mapping', opcode)
+                                exit(-1)
                             table[opcode] = [code, span]
                             mapping[opcode] = name
                         code += 1 << int(span)
@@ -158,15 +161,15 @@ for opcode in insns:
             width = int(width)
             if name in hooks:
                 h = hooks[name]
+                if opcode not in h.table:
+                    print(opcode, 'not in hook table')
+                value, span = h.table[opcode]
             elif name in mapping:
                 h = hooks[mapping[name]]
-            else:
-                print('Unknown hook/opcode name', name, 'in', bitpat)
-                exit(-1)
+                value, span = h.table[name]
             if width != h.hi - h.lo + 1:
                 print('Width mismatch', name, 'width', width, 'hi,lo', h.hi, h.lo, 'in', bitpat)
                 exit(-1)
-            value, span = h.table[opcode]
             code |= value << pos
             mask |= ((1 << (width-span)) -1) << pos
             pos += width
