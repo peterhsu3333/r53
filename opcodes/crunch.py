@@ -8,14 +8,20 @@ from dataclasses import dataclass
 class Field:
     hi:		int
     lo:		int
+    funcno:	int
 fields = {}
+
+@dataclass
+class Reg_Extractor:
+    n:		int
+    func:	str
+reg_extractors = {}
 
 @dataclass
 class Format:
     bitpat:	str
     flags:	str
     asm:	str
-    fmtdescr:	str
 formats = {}
 
 @dataclass
@@ -24,8 +30,10 @@ class Instruction:
     flags:	str
     asm:	str
     action:	str
-    descr:	str
+    operands:	str = None
+    length:	int = None
     immed:	str = None
+    longimm:	bool = None
     code:	str = None
     mask:	str = None
 insns = {}
@@ -36,81 +44,112 @@ class Hook:
     lo:		int
     table:	any
 hooks = {}
-    
+
 opcodes = []
 mapping = {}
+default_operands = []
 
-ignore_line = re.compile(r'^$|^#')
-field_line  = re.compile(r'\s*(\w+)\[(\d+):(\d+)\]')
-format_line = re.compile(r'^\s*(\w+)\s+\"(.*)\"\s+(\S+)\s+(\S+)\s+\"(.*)\"')
-map_section = re.compile(r'^@map\s+(\w+)\[(\d+):(\d+)\]\s+\"\"\"')
-op_explicit = re.compile(r'^\s*(\S+)\s+\"(.*)\"\s+(\S+)\s+(\S+)\s+\"(.*)\"(\s+\"(.*)\")?')
-op_with_fmt = re.compile(r'^\s*(\S+)\s+(\S+)\s+\"(.*)\"\s+\"(.*)\"')
+reg_extractors = {}
+imm_extractors = {}
+
+field_declaration	= re.compile(r'^@field\s+(\(([^)]*)\))?\s*"""')
+
+
+field_line  = re.compile(r"\s*(\w+)\[(\d+):(\d+)\]\s+\'([^\']*)\'")
+#format_line = re.compile(r'^\s*(\w+)\s+\"([^"]*)\"\s+(\S+)\s+(\S+)\s+\"([^"]*)\"')
+format_line = re.compile(r'^\s*(\w+)\s+\"([^"]*)\"\s+(\S+)\s+(\S+)')
+map_section = re.compile(r'^@map\s+(\w+)\[(\d+):(\d+)\]\s+"""')
+op_explicit = re.compile(r'^\s*(\S+)\s+\"([^"]*)\"(\([^]]*\))?\s+(\S+)\s+(\S+)\s+\"([^"]*)\"')
+op_with_fmt = re.compile(r'^\s*(\S+)\s+(\S+)\s+\"([^"]*)\"\s+\"([^"]*)\"')
 
 hook_spec = re.compile(r'^\?(\w+)\[(\d+)\]')
-reg_type = re.compile(r'^([a-z_A-Z]\w*)(\.(.*))?')
+reg_type = re.compile(r'^(\w+)(\.(\w+))?')
+
+def eprint(*args):
+    sys.stderr.write(' '.join(*args) + '\n')
+
+def die(*args):
+    eprint(args)
+    exit(-1)
+
+def unrecognized(line):
+    if not re.match("^[ ]*(#.*)?", line):
+        print('Unrecognized line:')
+        print(line)
+        exit(-1)
 
 
-
+#
+# Parse isa.def file
+#
 with open(sys.argv[1]) as f:
     lines = f.readlines()
     while lines:
-        line = lines.pop(0).strip()
-        if re.match('^@fields', line):
-            line = lines.pop(0).strip()
-            while line != '"""':
+        line = lines.pop(0)
+        m = field_declaration.match(line)
+        if m:
+            dummy, default_ops = m.groups()
+            if default_ops != None:
+                default_operands = default_ops.split(',')
+            line = lines.pop(0)
+            while line != '"""\n':
                 m = field_line.match(line)
                 if m:
-                    name, hi, lo = m.groups()
+                    name, hi, lo, regfunc = m.groups()
                     hi = int(hi)
                     lo = int(lo)
-                    fields[name] = Field(hi, lo)
-                elif not ignore_line.match(line):
-                    print('unrecognized ', line)
-                    exit(-1)
-                line = lines.pop(0).strip()
+                    if regfunc not in reg_extractors:
+                        n = len(reg_extractors)
+                        reg_extractors[regfunc] = Reg_Extractor(n, 'rx{:d}(b) {{ int n = x({:d},{:d}); return {:s}; }}'.format(n, lo, hi-lo+1, regfunc))
+                    regfunc = reg_extractors[regfunc].n
+                    fields[name] = Field(hi, lo, regfunc)
+                else:
+                    unrecognized(line)
+                line = lines.pop(0)
         elif re.match('^@format', line):
-            line = lines.pop(0).strip()
-            while line != '"""':
+            line = lines.pop(0)
+            while line != '"""\n':
                 m = format_line.match(line)
                 if m:
-                    name, bitpat, flags, asm, fmtdescr = m.groups()
-                    formats[name] = Format(bitpat, flags, asm, fmtdescr) 
-                elif not ignore_line.match(line):
-                    print('unrecognized ', line)
-                line = lines.pop(0).strip()
+                    name, bitpat, flags, asm = m.groups()
+                    flags = flags.split(',')
+                    formats[name] = Format(bitpat, flags, asm)
+                else:
+                    unrecognized(line)
+                line = lines.pop(0)
             continue
         
         elif re.match('^@map', line):
             m = map_section.match(line)
             if not m:
-                print('Bad map declaration: ', line)
-                exit(-1)
+                die('Bad map declaration: ', line)
             name, hi, lo = m.groups()
             hi = int(hi)
             lo = int(lo)
             if lo > hi:
-                print('Bad bit positions', line)
-                exit(-1)
+                die('Bad bit positions', line)
             table = {}
             code = 0
-            line = lines.pop(0).strip()
-            while line != '"""':
-                if not ignore_line.match(line):
-                    tuple = line.partition('#')[0].split()
-                    for t in tuple:
-                        opcode = t
-                        span = 0
-                        if '/' in t:
-                            opcode, span = t.split('/')
-                        if opcode != '.':
-                            if opcode in mapping:
-                                print('Duplicate opcode mapping', opcode)
-                                exit(-1)
-                            table[opcode] = [code, span]
-                            mapping[opcode] = name
-                        code += 1 << int(span)
-                line = lines.pop(0).strip()
+            line = lines.pop(0)
+            while line != '"""\n':
+#                if re.match("^[ ]*(#.*)?", line):
+#                    line = lines.pop(0)
+#                    continue
+                tuple = line.split()
+                for opcode in tuple:
+                    if opcode[0] == '#':
+                        break
+                    span = 0
+                    if '/' in opcode:
+                        opcode, span = opcode.split('/')
+                        span = int(span)
+                    if opcode != '.':
+                        if opcode in mapping:
+                            die('Duplicate opcode mapping', opcode)
+                        table[opcode] = code
+                        mapping[opcode] = name
+                    code += 1 << span
+                line = lines.pop(0)
             hooks[name] = Hook(hi, lo, table)
             continue    
 
@@ -118,30 +157,35 @@ with open(sys.argv[1]) as f:
             m = op_with_fmt.match(line)
             n = op_explicit.match(line)
             if m:
-                name, fmt, action, descr = m.groups()
+                name, fmt, flags, action = m.groups()
                 tuple = fmt.split(',')
                 format_name = tuple[0]
                 if format_name not in formats:
-                    print('Undefined format', format_name, 'in line')
-                    print(line)
-                    exit(-1)
+                    die('Undefined format', format_name, 'in', line)
                 fmt = formats[format_name]
-                tuple = fmt.flags.split(',') + tuple[1:]
-                flags = ','.join(tuple)
-                insns[name] = Instruction(fmt.bitpat, flags, fmt.asm, action, descr)
+                operands = default_operands
+                flags = fmt.flags + tuple[1:]
+                insns[name] = Instruction(fmt.bitpat, flags, fmt.asm, action, operands)
                 opcodes.append(name)
             elif n:
-                name, bitpat, flags, asm, action, dummy, descr = n.groups()
-                insns[name] = Instruction(bitpat, flags, asm, action, descr)
+                name, bitpat, operands, flags, asm, action = n.groups()
+                if not operands:
+                    operands = []
+                flags = flags.split(',')
+                insns[name] = Instruction(bitpat, flags, asm, action, operands)
                 opcodes.append(name)
-            elif not ignore_line.match(line):
-                print('unrecognized ', line)
-                exit(-1)
-
-
+            else:
+                if unrecognized(line):
+                    print('unrecognized', line)
+                    exit(-1)
+                
+#
+# Detailed parse of instruction bit pattern
+#
 for opcode in insns:
     bitpat = insns[opcode].bitpat
     code, mask, pos = 0, 0, 0
+    operands = []
     signed, longimm = False, False
     immed = []
     # process bit pattern chucks from right to left
@@ -155,65 +199,274 @@ for opcode in insns:
         elif b[0] == '?':
             m = hook_spec.match(b)
             if not m:
-                print('Bad hook', b, 'in', bitpat)
-                exit(-1)
+                die('Bad hook', b, 'in', bitpat)
             name, width = m.groups()
             width = int(width)
             if name in hooks:
                 h = hooks[name]
                 if opcode not in h.table:
-                    print(opcode, 'not in hook table')
-                value, span = h.table[opcode]
+                    die('opcode', opcode, 'not in hook table')
+                value = h.table[opcode]
             elif name in mapping:
                 h = hooks[mapping[name]]
-                value, span = h.table[name]
+                value = h.table[name]
+            else:
+                print(mapping)
+                die('opcode "{:s}" of "{:s}" have neither hook or mapping'.format(name, bitpat))
             if width != h.hi - h.lo + 1:
-                print('Width mismatch', name, 'width', width, 'hi,lo', h.hi, h.lo, 'in', bitpat)
-                exit(-1)
+                die('Width mismatch', name, 'width', width, 'hi,lo', h.hi, h.lo, 'in', bitpat)
             code |= value << pos
-            mask |= ((1 << (width-span)) -1) << pos
+            mask |= ((1 << width) -1) << pos
             pos += width
-        elif re.match(r'^[a-z_A-Z]', b):
+        elif re.match('^[a-z_A-Z]', b):
             m = reg_type.match(b)
             if not m:
-                print('Bad register specifier', name, 'in', bitpat)
-                exit(-1)
+                die('Bad register specifier "{:s}" for {:s} "{:s}"'.format(b, opcode, bitpat))
             name, dummy, typ = m.groups()
             if name not in fields:
-                print('Unknown register field name', name, 'in', bitpat)
-                exit(-1)
+                die('Unknown register field name', name, 'in', bitpat)
+            operands.append('rx({:d},b)->{:s}'.format(fields[name].funcno, typ))
             pos += fields[name].hi - fields[name].lo + 1
         elif re.match(r'\{[^}]+\}', b):
             b = b[1:-1]
             tuple = []
             for t in reversed(b.split('|')):
+                extractor = 'x'
                 if t[0] == '-':
-                    signed = True
+                    extractor = 'xs'
                     t = t[1:]
                 m = re.match(r'(\d+)(:(\d+))?', t)
                 if not m:
-                    print('Bad immediate specifier', t, 'in', bitpat)
-                    exit(-1)
+                    die('Bad immediate specifier', t, 'in', bitpat)
                 hi, colon, lo = m.groups()
                 hi = int(hi)
                 lo = int(lo) if colon else hi
                 if lo > hi:
-                    print('Bad bit positions', t, 'in', bitpat)
-                    exit(-1)
+                    die('Bad bit positions', t, 'in', bitpat)
                 if hi >= 13:
-                    longimmed = True
-                immed.append('x({:d},{:d})<<{:d}'.format(pos, hi-lo+1, lo))
+                    longimm = True
+                immed.append('{:s}({:d},{:d})<<{:d}'.format(extractor, pos, hi-lo+1, lo))
                 pos += hi-lo+1
         else:
-            print('Unknown field', b, 'in bits "', bitpat, '"')
+            eprint('Unknown field', b, 'in bits "', bitpat, '"')
             exit(-1)
     if pos % 8 != 0:
-        print('Length', pos, 'not multiple of 8 bits', bitpat)
-        exit(-1)
-    insns[opcode].length = int(pos / 8)
-    insns[opcode].immed = immed
-    insns[opcode].code = code
-    insns[opcode].mask = mask
+        die('Length', pos, 'not multiple of 8 bits', bitpat)
+    if len(immed) == 0:
+        immed = '0'
+    else:
+        immed = '|'.join(immed)
+        if immed not in imm_extractors:
+            n = len(imm_extractors)
+            imm_extractors[immed] = n
+        immed = 'ix{:d}(b)'.format(imm_extractors[immed])
+
+    insns[opcode].operands = operands
+    insns[opcode].length   = int(pos / 8)
+    insns[opcode].immed    = immed
+    insns[opcode].longimm  = longimm
+    insns[opcode].code     = code
+    insns[opcode].mask     = mask
+
+
+#----------------------------------------------------------------------
+#
+# Next sections emit various cavatools files
+#
+
+#
+# Copy file only if there are changes.  Prevents unnecessary makes.
+#
+def diffcp(fname):
+    if os.path.exists(fname) and os.system('cmp -s newcode.tmp '+fname) == 0:
+        os.system('rm newcode.tmp')
+    else:
+        os.system('mv newcode.tmp '+fname)
+
+
+#
+# Create array[opcode] of bitvector for ISA extension and ATTRibutes
+#
+defined_flags = {}
+
+def emit_bitvec(within, prefix, varname):
+    defined_flags[prefix] = {}
+    f.write('const {:s}_bv_t {:s}[] = {{\n'.format(prefix, varname))
+    for opcode in insns:
+        bv = []
+        for a in insns[opcode].flags: # list of attributes
+            if not a.isalnum():
+                continue
+            if within(a):
+                bv.append('{:s}_{:s}'.format(prefix, a))
+                defined_flags[prefix][a] = 1
+        bv = '|'.join(bv)
+        if len(bv) == 0:
+            bv = '0'
+        f.write('  /* {:19s} */ {:20s}\n'.format(opcode, bv+','))
+    f.write('};\n\n')
+    
+#
+# Create bitmask for stop before/after.  Bitnumber is opcode number.
+#
+def emit_mask(attrkey, varname):
+    f.write('const uint64_t {:s}[] = {{\n'.format(varname))
+    mask = 0
+    n = 0
+    for opcode in opcodes:
+        if n == 64:
+            f.write('  0x{:016x},\n'.format(mask))
+            mask = 0
+            n = 0
+        if attrkey in insns[opcode].flags:
+            mask |= 1 << n
+        n += 1
+    f.write('  0x{:016x},\n'.format(mask))
+    f.write('};\n\n')
+
+#
+# Return integer declaration big enough to contain bit vector
+#
+def assign_bitvec_values_returning_type(table):
+    shamt = 0
+    for t in sorted(table.keys()):
+        table[t] = shamt
+        shamt += 1
+    if shamt < 8:
+        bv = 'uint8_t'
+    elif shamt < 16:
+        bv = 'uint16_t'
+    elif shamt < 32:
+        bv = 'uint32_t'
+    elif shamt < 64:
+        bv = 'uint64_t'
+    else:
+        print('Bitvector too long')
+    return bv
+
+#
+# Create constants.h
+#
+with open('newcode.tmp', 'w') as f:
+    f.write('const char* op_name[] = {')
+    n = 0
+    for opcode in opcodes:
+        if n % 4 == 0:
+            f.write('\n  ')
+        f.write('{:20s}'.format('"' + opcode.replace('.','_') + '",'))
+        n += 1
+    f.write('\n};\n\n')
+
+    emit_bitvec(lambda a: a.isupper(), 'ISA', 'isa_ext')
+    emit_bitvec(lambda a: not a.isupper(), 'ATTR', 'attr')
+    emit_mask('<', 'stop_before')
+    emit_mask('>', 'stop_after')
+diffcp('../caveat/constants.h')
+
+
+#
+# Create opcodes.h
+# Important:  opcode list augmented with these pseudo instructions
+#
+opcodes = ['ZERO'] + opcodes + ['ILLEGAL', 'UNKNOWN']
+
+with open('newcode.tmp', 'w') as f:
+    f.write('enum Opcode_t : short {')
+    n = 0
+    for opcode in opcodes:
+        if n % 4 == 0:
+            f.write('\n  ')
+        f.write('{:20s}'.format('Op_' + opcode.replace('.','_') + ','))
+        n += 1
+    f.write('\n};\n\n')
+    f.write('const int Num1ber_of_Opcodes = {:d};\n\n'.format(len(opcodes)))
+
+    for flag in sorted(defined_flags.keys()):
+        table = defined_flags[flag]
+        typ = assign_bitvec_values_returning_type(table)
+        f.write('enum {:s}_t {{'.format(flag))
+        for t in sorted(table.keys()):
+            f.write('\n  {:16s} = 1 << {:d},'.format(flag+'_'+t, table[t]))
+        f.write('\n}};\n')
+        f.write('typedef {:s} {:s}_bv_t;\n\n'.format(typ, flag))
+diffcp('../caveat/opcodes.h')
+
+
+#
+# Create semantics.h
+#
+
+def makelist(table, n, f, name):
+    list = [ None ] * n
+    for t in table.keys():
+        list[table[t]] = t
+
+    f.write('int (*const {:s}[])(int32_t b) = {{'.format(name))
+    for k in range(len(list)):
+        f.write('\n  /* {:2d} */  [](int32_t b) {{ return {:s}; }},'.format(k, list[k]))
+    f.write('\n};\n\n')
+    
+with open('newcode.tmp', 'w') as f:
+    #
+    #  field extraction functions
+    #
+    for func in reg_extractors:
+        f.write('  static int rx{:d}(b) {:s}\n'.format(reg_extractors[func].n, reg_extractors[func].func))
+    f.write('\n\n')
+
+    for func in imm_extractors:
+        f.write('  static int ix{:d}(b) {{ return {:s}; }}\n'.format(imm_extractors[func], func))
+    f.write('\n\n')
+
+    for opcode in opcodes:
+        if opcode not in insns:
+            continue
+        opname = opcode.replace('.','_')
+        i = insns[opcode]
+        digits = i.length * 2
+        code = '0x'+hex(i.code)[2:].zfill(digits)
+        mask = '0x'+hex(i.mask)[2:].zfill(digits)
+        operands = i.operands
+        while len(operands) < 4:
+            operands.append('0')
+        f.write('  if (b&{:s}=={:s}) '.format(mask, code))
+        if i.longimm:
+            f.write('return Insn_t({:15s}, {:s}, {:s}, {:s});\n'.format(opname, operands[0], operands[1], i.immed))
+        else:
+            f.write('return Insn_t({:15s}, {:s}, {:s}, {:s}, {:s}, {:s});\n'.format(opname, operands[0], operands[1], operands[2], operands[3], i.immed))
+diffcp('../caveat/decoder.h')
+
+
+#
+#  Create interpreter semantics.in
+#
+with open('newcode.tmp', 'w') as f:
+    for opcode in insns:
+        i = insns[opcode]
+        opname = opcode.replace('.','_')
+        f.write('    case {:20s} {:s}; s.pc+={:d}; break;\n'.format(opname+':', i.action, i.length))
+diffcp('../caveat/semantics.h')
+
+
+exit(0)
+
+with open('newcode.tmp', 'w') as f:
+    for opcode in insn_in_order:
+        (opname, asm, attr, code, mask, bytes, immed, immtyp, reglist, action, regtypes) = instructions[opcode]
+        if immtyp == 1:
+            f.write('  if (match(b, {:s}, {:s}, {:15s}, i, {:15s}, {:15s}, {:15s})) return i;\n' \
+                    .format(mask, code, opname, reglist[0], reglist[1], immed))
+        else:
+            f.write('  if (match(b, {:s}, {:s}, {:15s}, i, {:15s}, {:15s}, {:15s}, {:15s}, {:15s})) return i;\n' \
+                    .format(mask, code, opname, reglist[0], reglist[1], reglist[2], reglist[3], immed))
+diffcp('../caveat/decoder.h')
+
+exit(0)
+
+
+if insns[opcode].length not in opsizes:
+    opsizes[insns[opcode].length] = []
+opsizes[insns[opcode].length].append(opcode)
 
 for opcode in opcodes:
     code = insns[opcode].code
@@ -244,9 +497,6 @@ immspec = {}
 numimmspecs = 0
 
 Last_Compressed_Opcode = 0
-
-def eprint(*args):
-    sys.stderr.write(' '.join(map(str,args)) + '\n')
 
 def diffcp(fname):
     if os.path.exists(fname) and os.system('cmp -s newcode.tmp '+fname) == 0:
@@ -429,47 +679,6 @@ for opcode, t in instructions.items():
             ISA[a] = 1
         elif a.isalpha():
             ATTR[a] = 1;
-
-def define_bitvec(table):
-    shamt = 0
-    for t in sorted(table.keys()):
-        table[t] = shamt
-        shamt += 1
-    if shamt < 8:
-        bv = 'uint8_t'
-    elif shamt < 16:
-        bv = 'uint16_t'
-    elif shamt < 32:
-        bv = 'uint32_t'
-    elif shamt < 64:
-        bv = 'uint64_t'
-    else:
-        print('Bitvector too long')
-    return bv
-    
-with open('newcode.tmp', 'w') as f:
-    f.write('enum Opcode_t : short {')
-    n = 0
-    for opcode in opcodes:
-        if n % 4 == 0:
-            f.write('\n  ')
-        f.write('{:20s}'.format('Op_' + opcode.replace('.','_') + ','))
-        n += 1
-    f.write('\n};\n\n')
-    f.write('const Opcode_t Last_Compressed_Opcode = Op_{:s};\n'.format(last_compressed_opcode.replace('.','_')))
-    f.write('const int Num1ber_of_Opcodes = {:d};\n\n'.format(len(opcodes)))
-
-    bv = define_bitvec(ISA)
-    f.write('enum ISA_t {')
-    for t in sorted(ISA.keys()):
-        f.write('\n  ISA_{:s} = 1 << {:d},'.format(t, ISA[t]))
-    f.write('\n}};\ntypedef {:s} ISA_bv_t;\n\n'.format(bv))
-    bv = define_bitvec(ATTR)
-    f.write('enum ATTR_t {')
-    for t in sorted(ATTR.keys()):
-        f.write('\n  ATTR_{:s} = 1 << {:d},'.format(t, ATTR[t]))
-    f.write('\n}};\ntypedef {:s} ATTR_bv_t;\n\n'.format(bv))
-diffcp('../caveat/opcodes.h')
 
 def make_mask(key):
     val = []

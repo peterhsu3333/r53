@@ -1,49 +1,56 @@
+#
+#  Register field definitions.
+#  Mapping is 64 vector elements, then eight S-regs, followed by eight A-regs
+#
+#  Field Name		Mapping Function			Description
+@field """
+   sX[8:6]		'n+64+0'				# Scalar and Index register, S register only in X position
+   aX[8:6]		'n+64+8'				# Base register, A register only in X position
+   vX[8:6]		'n*8'					# Vector V register in X position
 
-@fields """
-   rX[9:6]		# Scalar A or S register in X position
-   rY[3:0]		# Scalar A or S regiter in Y position
-   rT[5:0]		# A,S,T scalar register in T position
-   
-   aX[8:6]		# Base register, A register only in X position
-   sX[8:6]		# Scalar and Index register, S register only in X position
-   vX[8:6]		# Vector V register in X position
-   
-   sY[2:0]		# Scalar register, S register only in Y position
-   vY[2:0]		# Vector V register only in Y position
+   rX[9:6]		'n+64'					# Scalar A or S register in X position
+   rY[3:0]		'n+64'					# Scalar A or S register in Y position
 
-   vZ[5:3]		# Vector V register only in Z position
-   sZ[5:3]		# S register only in Z position, for 3-operand instructions
+   vT[5:0]		'n'					# All vector elements
+   rT[5:0]		'(n<48) ? n : n+16'			# A,S,T scalar register in T position
+   
+   sY[2:0]		'n+64'					# Scalar S register in Y position
+   vY[2:0]		'n*8'					# Vector V register only in Y position
+
+   sZ[5:3]		'n+64'					# S register in Z position, for 3-operand instructions
+   vZ[5:3]		'n*8'					# Vector V register in Z position
 """
 
-#  Name		Bit Pattern						Flags		Assembler	Description
+#  Name		Bit Pattern (operands)					Regs		Flags		Assembler	Description
 @format """
-   S_fmt	"0001 ?SoP[2]     {6:4|3:0|-10|9} aX.l {8:7} rY.l"	st		y,o(x)		"Scalar store displacement format"
-   L_fmt	"1    ?LoP[3] {8:7|6:4|3:0|-10|9} aX.l       rT.l"	ld		t,o(x)		"Scalar load displacement format"
-   B_fmt	"01   ?BoP[3]   {9|6:4|3:0|-10}   rX.l {8:7} rY.l"	cj,>		x,y,p		"Conditional branch format"
-   I_fmt	"1111 0  ?IoP[4]      {3:0|-10|9} rX.l {8:7|6:4}"	-		x,j		"Register-immediate format, long operands"
+   S_fmt	"0001 ?SoP[2]     {6:4|3:0|-10|9} aX.l {8:7} rY.l"	-,aX,rY		st		y,o(x)		# Scalar store displacement format"
+   L_fmt	"1    ?LoP[3] {8:7|6:4|3:0|-10|9} aX.l       rT.l"	aX,aX,rT	ld		t,o(x)		# Scalar load displacement format"
+   B_fmt	"01   ?BoP[3]   {9|6:4|3:0|-10}   rX.l {8:7} rY.l"	-,rX,rY		cj,>		x,y,p		# Conditional branch format"
+   I_fmt	"1111 0  ?IoP[4]      {3:0|-10|9} rX.l {8:7|6:4} "	rX,rX		-		x,j		# Register-immediate format, long operands"
    
-   RU_fmt	"1111 10 ?RoP[8] rX.l rT.l"				-		x,t		"Register-register format, unary long format"
-   RUw_fmt	"1111 10 ?RoP[8] rX.w rT.w"				-		x,t		"Register-register format, unary word format"
-   RI_fmt	"1111 10 ?RoP[8] rX.l {5:0}"				-		x,i	     	"Register-shift amount format, long operands"
-   R_fmt	"1111 10 ?RoP[8] rX.l rT.l"				-		x,t		"Register-register format, long operands"
-   Rw_fmt	"1111 10 ?RoP[8] rX.w rT.w"				-		x,t		"Register-register format, word operands"
-   Rf_fmt	"1111 10 ?RoP[8] rX.f rT.f"				-		x,t		"Register-register format, float operands"
-   Rd_fmt	"1111 10 ?RoP[8] rX.d rT.d"				-		x,t		"Register-register format, double operands"
+   RI_fmt	"1111 10 ?RoP[8] rX.l {5:0}"				rX,rX		-		x,i	     	# Register-shift amount format, long operands"
+   RU_fmt	"1111 10 ?RoP[8] rX.l rT.l "				rX,rT		-		x,t		# Register-register format, unary long format"
+   RUw_fmt	"1111 10 ?RoP[8] rX.w rT.w "				rX,rT		-		x,t		# Register-register format, unary word format"
    
-   Ff_fmt	"1111 10 ?FoP[8] 1 sX.f rT.f"				-		x,t		"Register-register format, float operands"
-   Fd_fmt	"1111 10 ?FoP[8] 1 sX.d rT.d"				-		x,t		"Register-register format, double operands"
-   F3f_fmt	"1111 10 ?FoP[8] 1 sX.f sZ.f sY.f"			-		z,x,y		"Register-register format, 3 float operands"
-   F3d_fmt	"1111 10 ?FoP[8] 1 sX.d sZ.d sY.d"			-		z,x,y		"Register-register format, 3 double operands"
+   R_fmt	"1111 10 ?RoP[8] rX.l rT.l"				rX,rX,rT	-		x,t		# Register-register format, long operands"
+   Rw_fmt	"1111 10 ?RoP[8] rX.w rT.w"				rX,rX,rT	-		x,t		# Register-register format, word operands"
+   Rf_fmt	"1111 10 ?RoP[8] rX.f rT.f"				rX,rX,rT	-		x,t		# Register-register format, float operands"
+   Rd_fmt	"1111 10 ?RoP[8] rX.d rT.d"				rX,rX,rT	-		x,t		# Register-register format, double operands"
    
-   VSl_fmt	"1111 01 ?VoP[8] 0 vX.l vZ.l sY.l"			vec		z,x,y		"Vector-scalar format, long operands"
-   VSw_fmt	"1111 01 ?VoP[8] 0 vX.w vZ.w sY.w"			vec		z,x,y		"Vector-scalar format, word operands"
-   VSf_fmt	"1111 01 ?VoP[8] 0 vX.f vZ.f sY.f"			vec		z,x,y		"Vector-scalar format, float operands"
-   VSd_fmt	"1111 01 ?VoP[8] 0 vX.d vZ.d sY.d"			vec		z,x,y		"Vector-scalar format, double operands"
+   Ff_fmt	"1111 10 ?FoP[8] 1 sX.f rT.f"				rX,rX,rT	F		x,t		# Register-register format, float operands"
+   Fd_fmt	"1111 10 ?FoP[8] 1 sX.d rT.d"				rX,rX,rT	D		x,t		# Register-register format, double operands"
+   F3f_fmt	"1111 10 ?FoP[8] 1 sX.f sZ.f sY.f"			rX,rX,rT	F		z,x,y		# Register-register format, 3 float operands"
+   F3d_fmt	"1111 10 ?FoP[8] 1 sX.d sZ.d sY.d"			rX,rX,rT	D		z,x,y		# Register-register format, 3 double operands"
+   
+   VSl_fmt	"1111 01 ?VoP[8] 0 vX.l vZ.l sY.l"			rX,rX,rY	vec		z,x,y		# Vector-scalar format, long operands"
+   VSw_fmt	"1111 01 ?VoP[8] 0 vX.w vZ.w sY.w"			rX,rX,rY	vec		z,x,y		# Vector-scalar format, word operands"
+   VSf_fmt	"1111 01 ?VoP[8] 0 vX.f vZ.f sY.f"			rX,rX,rY	vec,F		z,x,y		# Vector-scalar format, float operands"
+   VSd_fmt	"1111 01 ?VoP[8] 0 vX.d vZ.d sY.d"			rX,rX,rY	vec,D		z,x,y		# Vector-scalar format, double operands"
 
-   VVl_fmt	"1111 00 ?VoP[8] 0 vX.l vZ.l vY.l"			vec		z,x,y		"Vector-vector format, long operands"
-   VVw_fmt	"1111 00 ?VoP[8] 0 vX.w vZ.w vY.w"			vec		z,x,y		"Vector-vector format, word operands"
-   VVf_fmt	"1111 00 ?VoP[8] 0 vX.f vZ.f vY.f"			vec		z,x,y		"Vector-vector format, float operands"
-   VVd_fmt	"1111 00 ?VoP[8] 0 vX.d vZ.d vY.d"			vec		z,x,y		"Vector-vector format, double operands"
+   VVl_fmt	"1111 00 ?VoP[8] 0 vX.l vZ.l vY.l"			vec		z,x,y		# Vector-vector format, long operands"
+   VVw_fmt	"1111 00 ?VoP[8] 0 vX.w vZ.w vY.w"			vec		z,x,y		# Vector-vector format, word operands"
+   VVf_fmt	"1111 00 ?VoP[8] 0 vX.f vZ.f vY.f"			vec		z,x,y		# Vector-vector format, float operands"
+   VVd_fmt	"1111 00 ?VoP[8] 0 vX.d vZ.d vY.d"			vec		z,x,y		# Vector-vector format, double operands"
 """
 
 @map IoP[18:15] """
@@ -81,7 +88,7 @@ and		or		xor		.		andn		orn		xnor		.		# logical unit
 .		.		.		.		.		.		.		.
 
 # Scalar unary integer ops
-neg		negw		not		mv		orcb		rev8		.		mvto
+neg		negw		not		mv		orcb		rev8		mvto		mvfrom
 fsgnj.f		fsgnjn.f	fsgnjx.f	fclass.f	fsgnj.d		fsgnjn.d	fsgnjx.d	fclass.d
 clz		ctz		cpop		.		clzw		ctzw		cpopw		.	
 sext.b		sext.h		sext.w		.		zext.b		zext.h		zext.w		.
@@ -196,38 +203,39 @@ fmul.f		fmul.d		fdiv.f		fdiv.d		.		.		fsqrt.f		fsqrt.d		# FP multiplier/divider
 
 
 # Instructions with irregular formats
-#  Opcode	Bit Pattern					Flags	Asm	Action					Description
+#  Opcode	Bit Pattern					Regs	Flags	Asm	Action					Description
 
-   j		"01 ?jalr[3] {9|6:4|3:0|-10} 0000 {8:7}   rY"	uj,>	x,y,p	"          wrPC(rY+imm)"		"Jump"
-   jalr		"01 ?BoP[3]  {9|6:4|3:0|-10}   rX {8:7}   rY"	uj,>	x,y,p	"tmp=pc+3; wrPC(rY+imm); wrX(tmp)"	"Jump And Link Register"
-   b		"01 ?beq[3]  {9|6:4|3:0|-10} 0000 {8:7} 0000"	cj,>	x,y,p	"wrPC(pc+3*imm)"			"Branch"
+   j		"01 ?jalr[3] {9|6:4|3:0|-10} 0000 {8:7} rY.l"	-,rY	uj,>	x,y,p	"          wrPC(rY+imm)"		"Jump"
+   jalr		"01 ?BoP[3]  {9|6:4|3:0|-10} rX.l {8:7} rY.l"	rX,rY	uj,>	x,y,p	"tmp=pc+3; wrPC(rY+imm); wrX(tmp)"	"Jump And Link Register"
+   b		"01 ?beq[3]  {9|6:4|3:0|-10} 0000 {8:7} 0000"	-	j,>	x,y,p	"wrPC(pc+3*imm)"			"Branch"
    
-   li		"1111 0  ?IoP[4] {3:0|-10} rX {8:7|6:4|9}"	-	x,j	"wrd(imm)"				"Load Immediate"
-   lui		"001           {20:11|-27} rX     {26:21}"	-	x,u	"wrd(imm)"				"Load Upper Immediate"
-   mv		"1111 10 ?RoP[8]          rX rT          "	-	x,t	"wrX(rT)"				"Move"
-   mvto		"1111 10 ?RoP[8]          rX rT          "	-	x,t	"wrT(rX)"				"Move to T Register"
+   li		"1111 0  ?IoP[4] {3:0|-10}  rX.l {8:7|6:4|9}"	rX	-	x,j	"wrd(imm)"				"Load Immediate"
+   lui		"001           {20:11|-27}  rX.l     {26:21}"	rX	-	x,u	"wrd(imm)"				"Load Upper Immediate"
+   mv		"1111 10 ?RoP[8]            rX.l  rT.l      "	rX,rT	-	x,t	"wrX(rT)"				"Move"
+   mvto		"1111 10 ?RoP[8]            rX.l  rT.l      "	vT,rX	-	x,t	"wrT(rX)"				"Move to T Register"
+   mvfrom	"1111 10 ?RoP[8]            rX.l  rT.l      "	rX,vT	-	x,t	"wrT(rX)"				"Move to T Register"
 
-   fclass.f	"1111 10 ?RoP[8] 1 sX.l rT.f"			F	x,t	"wrX(f32_classify(rT))"			"FP Float Classify"
-   fsqrt.f	"1111 10 ?FoP[8] 1 sX.f rT.f"			F	x,t	"wrX(f32_sqrt(rT))"			"FP Float Square Root"
-   fcvt.w.f	"1111 10 ?FoP[8] 1 sX.f rT.w"			F	x,t	"wrX(i32_to_f32 (( int32_t)rT)"		"FP Convert Word to Float"
-   fcvt.uw.f	"1111 10 ?FoP[8] 1 sX.f rT.w"			F	x,t	"wrX(i32_to_f32 ((uint32_t)rT)"		"FP Convert Unsigned word to Float"
-   fcvt.l.f	"1111 10 ?FoP[8] 1 sX.f rT.l"			64,F	x,t	"wrX(i64_to_f32 (( int64_t)rT)"		"FP Convert Longword to Float"
-   fcvt.ul.f	"1111 10 ?FoP[8] 1 sX.f rT.l"			64,F	x,t	"wrX(i64_to_f32 ((uint64_t)rT)"		"FP Convert Unsigned Longword to Float"
-   fcvt.f.w	"1111 10 ?FoP[8] 1 sX.w rT.f"			F	x,t	"wrX(f32_to_i32 (          rT)"		"FP Convert Float to Word"
-   fcvt.f.uw	"1111 10 ?FoP[8] 1 sX.w rT.f"			F	x,t	"wrX(f32_to_ui32(          rT)"		"FP Convert Float to Unsigned word"
-   fcvt.f.l	"1111 10 ?FoP[8] 1 sX.d rT.f"			64,F	x,t	"wrX(f32_to_i64 (          rT)"		"FP Convert Float to Longword"
-   fcvt.f.ul	"1111 10 ?FoP[8] 1 sX.d rT.f"			64,F	x,t	"wrX(f32_to_ui64(          rT)"		"FP Convert Float to Unsigned Longword"
+   fclass.f	"1111 10 ?RUoP[8] 1         sX.l  rT.f      "	sX,rT	F	x,t	"wrX(f32_classify(rT))"			"FP Float Classify"
+   fsqrt.f	"1111 10 ?FUoP[8] 1         sX.f  rT.f      "	sX,rT	F	x,t	"wrX(f32_sqrt(rT))"			"FP Float Square Root"
+   fcvt.w.f	"1111 10 ?FUoP[8] 1         sX.f  rT.w      "	sX,rT	F	x,t	"wrX(i32_to_f32 (( int32_t)rT)"		"FP Convert Word to Float"
+   fcvt.uw.f	"1111 10 ?FoP[8]  1         sX.f  rT.w      "	sX,rT	F	x,t	"wrX(i32_to_f32 ((uint32_t)rT)"		"FP Convert Unsigned word to Float"
+   fcvt.l.f	"1111 10 ?FoP[8]  1         sX.f  rT.l      "	sX,rT	64,F	x,t	"wrX(i64_to_f32 (( int64_t)rT)"		"FP Convert Longword to Float"
+   fcvt.ul.f	"1111 10 ?FoP[8]  1         sX.f  rT.l      "	sX,rT	64,F	x,t	"wrX(i64_to_f32 ((uint64_t)rT)"		"FP Convert Unsigned Longword to Float"
+   fcvt.f.w	"1111 10 ?FoP[8]  1         sX.w  rT.f      "	sX,rT	F	x,t	"wrX(f32_to_i32 (          rT)"		"FP Convert Float to Word"
+   fcvt.f.uw	"1111 10 ?FoP[8]  1         sX.w  rT.f      "	sX,rT	F	x,t	"wrX(f32_to_ui32(          rT)"		"FP Convert Float to Unsigned word"
+   fcvt.f.l	"1111 10 ?FoP[8]  1         sX.d  rT.f      "	sX,rT	64,F	x,t	"wrX(f32_to_i64 (           rT)"		"FP Convert Float to Longword"
+   fcvt.f.ul	"1111 10 ?FoP[8]  1         sX.d  rT.f      "	sX,rT	64,F	x,t	"wrX(f32_to_ui64(          rT)"		"FP Convert Float to Unsigned Longword"
 
-   fclass.d	"1111 10 ?RoP[8] 1 sX.l rT.d"			D	x,t	"wrX(f64_classify(rT))"			"FP Double Classify"
-   fsqrt.d	"1111 10 ?FoP[8] 1 sX.d rT.d"			D	x,t	"wrX(f64_sqrt(rT))"			"FP Double Square Root"
-   fcvt.w.d	"1111 10 ?FoP[8] 1 sX.d rT.w"			D	x,t	"wrX(i32_to_f64 (( int32_t)rT)"		"FP Convert Word to Double"
-   fcvt.uw.d	"1111 10 ?FoP[8] 1 sX.d rT.w"			D	x,t	"wrX(i32_to_f64 ((uint32_t)rT)"		"FP Convert Unsigned word to Double"
-   fcvt.l.d	"1111 10 ?FoP[8] 1 sX.d rT.l"			64,D	x,t	"wrX(i64_to_f64 (( int64_t)rT)"		"FP Convert Longword to Double"
-   fcvt.ul.d	"1111 10 ?FoP[8] 1 sX.d rT.l"			64,D	x,t	"wrX(i64_to_f64 ((uint64_t)rT)"		"FP Convert Unsigned Longword to Double"
-   fcvt.d.w	"1111 10 ?FoP[8] 1 sX.w rT.d"			D	x,t	"wrX(f64_to_i32 (          rT)"		"FP Convert Double to Word"
-   fcvt.d.uw	"1111 10 ?FoP[8] 1 sX.w rT.d"			D	x,t	"wrX(f64_to_ui32(          rT)"		"FP Convert Double to Unsigned word"
-   fcvt.d.l	"1111 10 ?FoP[8] 1 sX.d rT.d"			64,D	x,t	"wrX(f64_to_i64 (          rT)"		"FP Convert Double to Longword"
-   fcvt.d.ul	"1111 10 ?FoP[8] 1 sX.d rT.d"			64,D	x,t	"wrX(f64_to_ui64(          rT)"		"FP Convert Double to Unsigned Longword"
+   fclass.d	"1111 10 ?RoP[8]  1         sX.l  rT.d      "	sX,rT	D	x,t	"wrX(f64_classify(rT))"			"FP Double Classify"
+   fsqrt.d	"1111 10 ?FoP[8]  1         sX.d  rT.d      "	sX,rT	D	x,t	"wrX(f64_sqrt(rT))"			"FP Double Square Root"
+   fcvt.w.d	"1111 10 ?FoP[8]  1         sX.d  rT.w      "	sX,rT	D	x,t	"wrX(i32_to_f64 (( int32_t)rT)"		"FP Convert Word to Double"
+   fcvt.uw.d	"1111 10 ?FoP[8]  1         sX.d  rT.w      "	sX,rT	D	x,t	"wrX(i32_to_f64 ((uint32_t)rT)"		"FP Convert Unsigned word to Double"
+   fcvt.l.d	"1111 10 ?FoP[8]  1         sX.d  rT.l      "	sX,rT	64,D	x,t	"wrX(i64_to_f64 (( int64_t)rT)"		"FP Convert Longword to Double"
+   fcvt.ul.d	"1111 10 ?FoP[8]  1         sX.d  rT.l      "	sX,rT	64,D	x,t	"wrX(i64_to_f64 ((uint64_t)rT)"		"FP Convert Unsigned Longword to Double"
+   fcvt.d.w	"1111 10 ?FoP[8]  1         sX.w  rT.d      "	sX,rT	D	x,t	"wrX(f64_to_i32 (          rT)"		"FP Convert Double to Word"
+   fcvt.d.uw	"1111 10 ?FoP[8]  1         sX.w  rT.d      "	sX,rT	D	x,t	"wrX(f64_to_ui32(          rT)"		"FP Convert Double to Unsigned word"
+   fcvt.d.l	"1111 10 ?FoP[8]  1         sX.d  rT.d      "	sX,rT	64,D	x,t	"wrX(f64_to_i64 (          rT)"		"FP Convert Double to Longword"
+   fcvt.d.ul	"1111 10 ?FoP[8]  1         sX.d  rT.d      "	sX,rT	64,D	x,t	"wrX(f64_to_ui64(          rT)"		"FP Convert Double to Unsigned Longword"
 
 
 # Instruction with regular formats
