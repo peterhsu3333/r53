@@ -343,8 +343,8 @@ with open('newcode.tmp', 'w') as f:
         n += 1
     f.write('\n};\n\n')
 
-    emit_bitvec(lambda a: a.isupper(), 'ISA', 'isa_ext')
-    emit_bitvec(lambda a: not a.isupper(), 'ATTR', 'attr')
+    emit_bitvec(lambda a:      a.isupper() or a.isnumeric() , 'ISA', 'isa_ext')
+    emit_bitvec(lambda a: not (a.isupper() or a.isnumeric()), 'ATTR', 'attr')
     emit_mask('<', 'stop_before')
     emit_mask('>', 'stop_after')
 diffcp('../caveat/constants.h')

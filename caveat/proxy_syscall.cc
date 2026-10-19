@@ -220,7 +220,7 @@ void thread_interpreter(hart_t* me)
   futex(&me->_tid, FUTEX_WAKE, 1);
   me->s.reg[2] = me->s.reg[11]; // a1 = child_stack
   me->s.reg[4] = me->s.reg[13]; // a3 = tls
-  me->s.reg[10].x = 0;		// indicate child thread
+  me->s.reg[10].l = 0;		// indicate child thread
   me->s.pc += 4;		// skip over ecall
   me->interpreter(me);
 }

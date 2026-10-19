@@ -32,11 +32,14 @@ inline float64_t f64(uint64_t x) { float64_t r; r.v=x; return r; }
 
 // RISC-V sign-injection instructions
 
-#define fsgnj_s(a, b, n, x) \
+#define f32_sgnj(a, b, n, x) \
   f32((a.v & ~F32_SIGN) | ((((x) ? a.v : (n) ? F32_SIGN : 0) ^ b.v) & F32_SIGN))
 
-#define fsgnj_d(a, b, n, x) \
+#define f64_sgnj(a, b, n, x) \
   f64((a.v & ~F64_SIGN) | ((((x) ? a.v : (n) ? F64_SIGN : 0) ^ b.v) & F64_SIGN))
+
+#define f32_invsgn(a) f32(a.v ^ F32_SIGN)
+#define f64_invsgn(a) f64(a.v ^ F64_SIGN)
 
 // RISC-V compliant FP min/max
 

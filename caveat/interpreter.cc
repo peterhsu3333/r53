@@ -34,8 +34,9 @@
 
 bool hart_t::execute_instruction(Insn_t insn, reg_t* ap)
 {
+  uintptr_t tmp;
   _executed++;
-  s.reg[0].x = 0;
+  s.reg[0].l = 0;
   //fprintf(stderr, "%lx ", s.pc);
 #if 0
   labelpc(s.pc);
@@ -51,6 +52,7 @@ bool hart_t::execute_instruction(Insn_t insn, reg_t* ap)
 #define imm	         insn.immed()
 #define uimm	(uxlen_t)insn.immed()
   //#define wrd(e)	(*ap++)=s.reg[insn.rd()]=(e)
+#define wpc(e)	s.pc=(e)
 #define wrd(e)	s.reg[insn.rd()]=(e)
 #define r1	insn.rs1()
 #define r2	insn.rs2()

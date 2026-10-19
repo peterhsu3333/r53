@@ -59,6 +59,7 @@ void hart_t::initialize()
 
 hart_t::hart_t(int argc, const char* argv[], const char* envp[])
 {
+#if 0
   // figure out architecture options
   if (strncmp(conf_arch(), "rv64", 4) == 0)
     this_isa |= ISA_64;
@@ -78,10 +79,11 @@ hart_t::hart_t(int argc, const char* argv[], const char* envp[])
     default:  die("Invalid architecture %s", conf_arch());
     }
   }
+#endif
   
   memset(&s, 0, sizeof(processor_state_t));
   uintptr_t stack_pointer = emulate_execve(argv[0], argc, argv, envp, s.pc);
-  s.reg[2].x = stack_pointer;
+  s.reg[2].l = stack_pointer;
   _tid = gettid();
   ptnum = pthread_self();
   simulator = 0;		// must be filled in by deriving class
@@ -110,17 +112,19 @@ void hart_t::print(uintptr_t pc, Insn_t* i, FILE* out)
 {
   fprintf(out, "[%d] ", gettid());
   if (i->rd() == NOREG) {
+#if 0
     if (ATTR[i->opcode()] & ATTR_st)
-      fprintf(out, "%4s[%016lx] ", reg_name[i->rs2()], s.reg[i->rs2()].x); 
+      fprintf(out, "%4s[%016lx] ", reg_name[i->rs2()], s.reg[i->rs2()].ul); 
     else if ((ATTR[i->opcode()] & (ATTR_cj|ATTR_uj)) && (i->rs1() != NOREG))
       fprintf(out, "%4s[%016lx] ", reg_name[i->rs1()], s.reg[i->rs1()].x); 
     else if (ATTR[i->opcode()] & ATTR_ex)
       fprintf(out, "%4s[%016lx] ", reg_name[10], s.reg[10].x);
     else
       fprintf(out, "%4s[%16s] ", "", "");
+#endif
   }
   else
-    fprintf(out, "%4s[%016lx] ", reg_name[i->rd()], s.reg[i->rd()].x);
+    fprintf(out, "%4s[%016lx] ", reg_name[i->rd()], s.reg[i->rd()].ul);
   labelpc(pc, out);
   disasm(pc, i, "\n", out);
 }
@@ -242,15 +246,18 @@ Header_t* hart_t::find_bb(xlen_t pc)
       --j;		// remove ourself for next time
       break;
     }
-    dpc += j->compressed() ? 2 : 4;
+    dpc += j->length();
     // instructions with attribute '>' ends block
     if (stop_after[j->opcode() / 64] >> (j->opcode() % 64) & 0x1L)
       break;
   } while (dpc-pc < 256 && j-insnp(wbb) < 128);
-	
+
+#ifdef RISCV
   // pattern match store conditional and replace with compare-and-swap
   if (j->opcode()==Op_sc_w || j->opcode()==Op_sc_d)
     substitute_cas(dpc-4, j);
+#endif
+  
   *wbb = Header_t(pc, dpc-pc, j+1-insnp(wbb+1), (ATTR[j->opcode()] & ATTR_cj)!=0);
   //
   // Always end with one pointer to next basic block
@@ -307,12 +314,12 @@ bool hart_t::run_basic_block(reg_t* ap)
 
 long default_riscv_syscall(hart_t* h, long a0)
 {
-  long a1 = h->s.reg[11].x;
-  long a2 = h->s.reg[12].x;
-  long a3 = h->s.reg[13].x;
-  long a4 = h->s.reg[14].x;
-  long a5 = h->s.reg[15].x;
-  long rvnum = h->s.reg[17].x;
+  long a1 = h->s.reg[11].l;
+  long a2 = h->s.reg[12].l;
+  long a3 = h->s.reg[13].l;
+  long a4 = h->s.reg[14].l;
+  long a5 = h->s.reg[15].l;
+  long rvnum = h->s.reg[17].l;
   long rv = proxy_syscall(rvnum, a0, a1, a2, a3, a4, a5, h);
   return rv;
 }

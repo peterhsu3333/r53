@@ -33,7 +33,9 @@
    RUw_fmt	"1111 11 ?RoP[8]           rX         rT"	rX.w,rT.w		-		x,t		# Register-register format, unary word format"
    
    R_fmt	"1111 11 ?RoP[8]           rX         rT"	rX.l,rX.l,rT.l		-		x,t		# Register-register format, long operands"
+   Ru_fmt	"1111 11 ?RoP[8]           rX         rT"	rX.ul,rX.ul,rT.ul	-		x,t		# Register-register format, unsigned long operands"
    Rw_fmt	"1111 11 ?RoP[8]           rX         rT"	rX.w,rX.w,rT.w		-		x,t		# Register-register format, word operands"
+   Ruw_fmt	"1111 11 ?RoP[8]           rX         rT"	rX.uw,rX.uw,rT.uw		-	x,t		# Register-register format, unsigned word operands"
    Rf_fmt	"1111 11 ?RoP[8]           rX         rT"	rX.f,rX.f,rT.f		-		x,t		# Register-register format, float operands"
    Rd_fmt	"1111 11 ?RoP[8]           rX         rT"	rX.d,rX.d,rT.d		-		x,t		# Register-register format, double operands"
    
@@ -56,9 +58,9 @@
 # Instructions with irregular formats
 #  Opcode	Bit Pattern					Regs		Flags	Asm	Action					Description
 
-   j		"01 ?jalr[3] {9|6:4|3:0|-10} 0000 {8:7}   rY"	-,rY.l		uj,>	x,y,p	"          wrPC(r2+imm)"		"Jump"
-   jalr		"01 ?BoP[3]  {9|6:4|3:0|-10}   rX {8:7}   rY"	rX.l,rY.l	uj,>	x,y,p	"tmp=pc+3; wrPC(r2+imm); wrd(tmp)"	"Jump And Link Register"
-   b		"01 ?beq[3]  {9|6:4|3:0|-10} 0000 {8:7} 0000"	-		j,>	x,y,p	"wrPC(pc+3*imm)"			"Branch"
+   j		"01 ?jalr[3] {9|6:4|3:0|-10} 0000 {8:7}   rY"	-,rY.l		uj,>	x,y,p	"            wpc(r2+imm)"		"Jump"
+   jalr		"01 ?BoP[3]  {9|6:4|3:0|-10}   rX {8:7}   rY"	rX.l,rY.l	uj,>	x,y,p	"tmp=s.pc+3; wpc(r2+imm); wrd(tmp)"	"Jump And Link Register"
+   b		"01 ?beq[3]  {9|6:4|3:0|-10} 0000 {8:7} 0000"	-		j,>	x,y,p	"wpc(s.pc+3*imm)"			"Branch"
    
    li		"1111 0  ?IoP[4] {3:0|-10} rX {8:7|6:4|9}"	rX.l		-	x,j	"wrd(imm)"				"Load Immediate"
    lui		"001           {20:11|-27} rX     {26:21}"	rX.l		-	x,u	"wrd(imm)"				"Load Upper Immediate"
@@ -66,27 +68,27 @@
    mvto		"1111 11 ?RoP[8]           rX          rT"	vT.l,rX.l	-	x,t	"wrd(r1)"				"Move to T Register"
    mvfrom	"1111 11 ?RoP[8]           rX          rT"	rX.l,vT.l	-	x,t	"wrd(r1)"				"Move to T Register"
 
-   fclass.f	"1111 11 ?RoP[8]           rX          rT"	rX.l,rT.f	F	x,t	"wrX(f32_classify(r1))"			"FP Float Classify"
-   fsqrt.f	"1111 10 ?FoP[8] 1         sX          rT"	sX.f,rT.t	F	x,t	"wrX(f32_sqrt(r1)"			"FP Float Square Root"
-   fcvt.w.f	"1111 10 ?FoP[8] 1         sX          rT"	sX.f,rT.w	F	x,t	"wrX(i32_to_f32 (( int32_t)r1"		"FP Convert Word to Float"
-   fcvt.uw.f	"1111 10 ?FoP[8] 1         sX          rT"	sX.f,rT.uw	F	x,t	"wrX(i32_to_f32 ((uint32_t)r1"		"FP Convert Unsigned word to Float"
-   fcvt.l.f	"1111 10 ?FoP[8] 1         sX          rT"	sX.f,rT.l	64,F	x,t	"wrX(i64_to_f32 (( int64_t)r1"		"FP Convert Long to Float"
-   fcvt.ul.f	"1111 10 ?FoP[8] 1         sX          rT"	sX.f,rT.l	64,F	x,t	"wrX(i64_to_f32 ((uint64_t)r1"		"FP Convert Unsigned Long to Float"
-   fcvt.f.w	"1111 10 ?FoP[8] 1         sX          rT"	sX.w,rT.f	F	x,t	"wrX(f32_to_i32 (          r1"		"FP Convert Float to Word"
-   fcvt.f.uw	"1111 10 ?FoP[8] 1         sX          rT"	sX.uw,rT.f	F	x,t	"wrX(f32_to_ui32(          r1"		"FP Convert Float to Unsigned word"
-   fcvt.f.l	"1111 10 ?FoP[8] 1         sX          rT"	sX.l,rT.f	64,F	x,t	"wrX(f32_to_i64 (          r1"		"FP Convert Float to Long"
-   fcvt.f.ul	"1111 10 ?FoP[8] 1         sX          rT"	sX.ul,rT.f	64,F	x,t	"wrX(f32_to_ui64(          r1"		"FP Convert Float to Unsigned Long"
+   fclass.f	"1111 11 ?RoP[8]           rX          rT"	rX.l,rT.f	F	x,t	"wrd(f32_classify(r1))"			"FP Float Classify"
+   fsqrt.f	"1111 10 ?FoP[8] 1         sX          rT"	sX.f,rT.f	F	x,t	"wrd(f32_sqrt(r1))"			"FP Float Square Root"
+   fcvt.w.f	"1111 10 ?FoP[8] 1         sX          rT"	sX.f,rT.w	F	x,t	"wrd(i32_to_f32 (r1))"			"FP Convert Word to Float"
+   fcvt.uw.f	"1111 10 ?FoP[8] 1         sX          rT"	sX.f,rT.uw	F	x,t	"wrd(i32_to_f32 (r1))"			"FP Convert Unsigned word to Float"
+   fcvt.l.f	"1111 10 ?FoP[8] 1         sX          rT"	sX.f,rT.l	64,F	x,t	"wrd(i64_to_f32 (r1))"			"FP Convert Long to Float"
+   fcvt.ul.f	"1111 10 ?FoP[8] 1         sX          rT"	sX.f,rT.l	64,F	x,t	"wrd(i64_to_f32 (r1))"			"FP Convert Unsigned Long to Float"
+   fcvt.f.w	"1111 10 ?FoP[8] 1         sX          rT"	sX.w,rT.f	F	x,t	"wrd(f32_to_i32 (r1, RM, true))"	"FP Convert Float to Word"
+   fcvt.f.uw	"1111 10 ?FoP[8] 1         sX          rT"	sX.uw,rT.f	F	x,t	"wrd(f32_to_ui32(r1, RM, true))"	"FP Convert Float to Unsigned word"
+   fcvt.f.l	"1111 10 ?FoP[8] 1         sX          rT"	sX.l,rT.f	64,F	x,t	"wrd(f32_to_i64 (r1, RM, true))"	"FP Convert Float to Long"
+   fcvt.f.ul	"1111 10 ?FoP[8] 1         sX          rT"	sX.ul,rT.f	64,F	x,t	"wrd(f32_to_ui64(r1, RM, true))"	"FP Convert Float to Unsigned Long"
 
-   fclass.d	"1111 10 ?RoP[8]           rX          rT"	rX.l,rT.d	D	x,t	"wrX(f64_classify(r1)"			"FP Double Classify"
-   fsqrt.d	"1111 10 ?FoP[8] 1         sX          rT"	sX.d,rT.t	D	x,t	"wrX(f64_sqrt(r1)"			"FP Double Square Root"
-   fcvt.w.d	"1111 10 ?FoP[8] 1         sX          rT"	sX.d,rT.w	D	x,t	"wrX(i32_to_f64 (( int32_t)r1"		"FP Convert Word to Double"
-   fcvt.uw.d	"1111 10 ?FoP[8] 1         sX          rT"	sX.d,rT.uw	D	x,t	"wrX(i32_to_f64 ((uint32_t)r1"		"FP Convert Unsigned word to Double"
-   fcvt.l.d	"1111 10 ?FoP[8] 1         sX          rT"	sX.d,rT.l	64,D	x,t	"wrX(i64_to_f64 (( int64_t)r1"		"FP Convert Long to Double"
-   fcvt.ul.d	"1111 10 ?FoP[8] 1         sX          rT"	sX.d,rT.l	64,D	x,t	"wrX(i64_to_f64 ((uint64_t)r1"		"FP Convert Unsigned Long to Double"
-   fcvt.d.w	"1111 10 ?FoP[8] 1         sX          rT"	sX.w,rT.d	D	x,t	"wrX(f64_to_i32 (          r1"		"FP Convert Double to Word"
-   fcvt.d.uw	"1111 10 ?FoP[8] 1         sX          rT"	sX.uw,rT.d	D	x,t	"wrX(f64_to_ui32(          r1"		"FP Convert Double to Unsigned word"
-   fcvt.d.l	"1111 10 ?FoP[8] 1         sX          rT"	sX.l,rT.d	64,D	x,t	"wrX(f64_to_i64 (          r1"		"FP Convert Double to Long"
-   fcvt.d.ul	"1111 10 ?FoP[8] 1         sX          rT"	sX.ul,rT.d	64,D	x,t	"wrX(f64_to_ui64(          r1"		"FP Convert Double to Unsigned Long"
+   fclass.d	"1111 10 ?RoP[8]           rX          rT"	rX.l,rT.d	D	x,t	"wrd(f64_classify(r1))"			"FP Double Classify"
+   fsqrt.d	"1111 10 ?FoP[8] 1         sX          rT"	sX.d,rT.d	D	x,t	"wrd(f64_sqrt(r1))"			"FP Double Square Root"
+   fcvt.w.d	"1111 10 ?FoP[8] 1         sX          rT"	sX.d,rT.w	D	x,t	"wrd(i32_to_f64 (r1))"			"FP Convert Word to Double"
+   fcvt.uw.d	"1111 10 ?FoP[8] 1         sX          rT"	sX.d,rT.uw	D	x,t	"wrd(i32_to_f64 (r1))"			"FP Convert Unsigned word to Double"
+   fcvt.l.d	"1111 10 ?FoP[8] 1         sX          rT"	sX.d,rT.l	64,D	x,t	"wrd(i64_to_f64 (r1))"			"FP Convert Long to Double"
+   fcvt.ul.d	"1111 10 ?FoP[8] 1         sX          rT"	sX.d,rT.l	64,D	x,t	"wrd(i64_to_f64 (r1))"			"FP Convert Unsigned Long to Double"
+   fcvt.d.w	"1111 10 ?FoP[8] 1         sX          rT"	sX.w,rT.d	D	x,t	"wrd(f64_to_i32 (r1, RM, true))"	"FP Convert Double to Word"
+   fcvt.d.uw	"1111 10 ?FoP[8] 1         sX          rT"	sX.uw,rT.d	D	x,t	"wrd(f64_to_ui32(r1, RM, true))"	"FP Convert Double to Unsigned word"
+   fcvt.d.l	"1111 10 ?FoP[8] 1         sX          rT"	sX.l,rT.d	64,D	x,t	"wrd(f64_to_i64 (r1, RM, true))"	"FP Convert Double to Long"
+   fcvt.d.ul	"1111 10 ?FoP[8] 1         sX          rT"	sX.ul,rT.d	64,D	x,t	"wrd(f64_to_ui64(r1, RM, true))"	"FP Convert Double to Unsigned Long"
 
 
 
@@ -109,12 +111,12 @@
    st.d		S_fmt		"STORE(int64_t, r1+imm, r2)"						"Store Doubleword Displacement Mode"
 
 # Branch instructions
-   blt		B_fmt		"branch(      rX <        r2, pc+3*imm, pc+3)"				"Branch if Less Than"
-   bge		B_fmt		"branch(      rX >=       r2, pc+3*imm, pc+3)"				"Branch if Greater or Equal Than"
-   bltu		B_fmt		"branch((ul_t)rX <  (ul_t)r2, pc+3*imm, pc+3)"				"Branch if Less Than Unsigned"
-   bgeu		B_fmt		"branch((ul_t)rX >= (ul_t)r2, pc+3*imm, pc+3)"				"Branch if Greater or Equal Than Unsigned"
-   beq		B_fmt		"branch(      rX ==       r2, pc+3*imm, pc+3)"				"Branch if Equal"
-   bne		B_fmt		"branch(      rX !=       r2, pc+3*imm, pc+3)"				"Branch if Not Equal"
+   blt		B_fmt		"branch(          r1 <            r2, s.pc+3*imm, s.pc+3)"		"Branch if Less Than"
+   bge		B_fmt		"branch(          r1 >=           r2, s.pc+3*imm, s.pc+3)"		"Branch if Greater or Equal Than"
+   bltu		B_fmt		"branch((uint64_t)r1 <  (uint64_t)r2, s.pc+3*imm, s.pc+3)"		"Branch if Less Than Unsigned"
+   bgeu		B_fmt		"branch((uint64_t)r1 >= (uint64_t)r2, s.pc+3*imm, s.pc+3)"		"Branch if Greater or Equal Than Unsigned"
+   beq		B_fmt		"branch(          r1 ==           r2, s.pc+3*imm, s.pc+3)"		"Branch if Equal"
+   bne		B_fmt		"branch(          r1 !=           r2, s.pc+3*imm, s.pc+3)"		"Branch if Not Equal"
    
  
 
@@ -133,10 +135,10 @@
    slti		I_fmt		"wrd(r1 <  imm)"							"Set Less Than Immediate"
    sle		R_fmt		"wrd(r1 <= r2)"								"Set Less or Equal"
    slei		I_fmt		"wrd(r1 <= imm)"							"Set Less or Equal Immediate"
-   min		R_fmt		"wrd(      r1 <       r2 ? r1 : r2)"					"Minimum"
-   max		R_fmt		"wrd(      r1 >       r2 ? r1 : r2)"					"Maximum"
-   minu		R_fmt		"wrd((ul_t)r1 < (ul_t)r2 ? r1 : r2)"					"Minimum Unsigned"
-   maxu		R_fmt		"wrd((ul_t)r1 > (ul_t)r2 ? r1 : r2)"					"Maximum Unsigned"
+   min		R_fmt		"wrd(r1 < r2 ? r1 : r2)"					"Minimum"
+   max		R_fmt		"wrd(r1 > r2 ? r1 : r2)"					"Maximum"
+   minu		Ru_fmt		"wrd(r1 < r2 ? r1 : r2)"					"Minimum Unsigned"
+   maxu		Ru_fmt		"wrd(r1 > r2 ? r1 : r2)"					"Maximum Unsigned"
    
 # Logical unit
    not		RU_fmt		"wrd(~r1)"								"Not (Bitwise Complement)"
@@ -160,27 +162,27 @@
    sext.b	RU_fmt		"wrd(((long)(((int)r2<<24) >> 31) <<  8) | r2)"				"Sign Extend Byte"
    sext.h	RU_fmt		"wrd(((long)(((int)r2<<16) >> 31) << 16) | r2)"				"Sign Extend Half"
    sext.w	RUw_fmt,64	"wrd(         (int)r2                        )"				"Sign Extend Word"
-   zext.b	RU_fmt		"wrd((ui_t)r2 << 24 >> 24)"		     				"Zero Extend Byte"
-   zext.h	RU_fmt		"wrd((ui_t)r2 << 16 >> 16)"						"Zero Extend Half"
-   zext.w	RUw_fmt,64	"wrd((ui_t)r2            )"						"Zero Extend Word"
+   zext.b	RU_fmt		"wrd((uint32_t)r2 << 24 >> 24)"		     				"Zero Extend Byte"
+   zext.h	RU_fmt		"wrd((uint32_t)r2 << 16 >> 16)"						"Zero Extend Half"
+   zext.w	RUw_fmt,64	"wrd((uint32_t)r2            )"						"Zero Extend Word"
 
 # Shift unit
-   sll		R_fmt		"wrd(      r1 <<       r2 )"						"Shift Left Logical"
-   slli		RI_fmt		"wrd(      r1 <<       imm)"						"Shift Left Logical Immediate"
-   sllw		Rw_fmt		"wrd((uw_t)r1 << (uw_t)r2 )"						"Shift Left Logical Word"
-   slliw	RI_fmt		"wrd((uw_t)r1 << (uw_t)imm)"						"Shift Left Logical Immediate Word"
-   srl		R_fmt		"wrd((ul_t)r1 >> (ul_t)r2 )"						"Shift Right Logical"
-   srli		RI_fmt		"wrd((ul_t)r1 >> (ul_t)imm)"						"Shift Right Logical Immediate"
-   srlw		Rw_fmt		"wrd((uw_t)r1 >> (uw_t)r2 )"						"Shift Right Logical Word"
-   srliw	RI_fmt		"wrd((uw_t)r1 >> (uw_t)imm)"						"Shift Right Logical Immediate Word"
-   sra		R_fmt		"wrd(      r1 >>       r2 )"						"Shift Right Arithmetic"
-   srai		RI_fmt		"wrd(      r1 >>       imm)"						"Shift Right Arithmetic Immediate"
-   sraw		Rw_fmt		"wrd(( w_t)r1 >> ( w_t)r2 )"						"Shift Right Arithmetic Word"
-   sraiw	RI_fmt		"wrd(( w_t)r1 >> ( w_t)imm)"						"Shift Right Arithmetic Immediate Word"
-   ror		R_fmt		"wrd(((ul_t)r1 >> r2 ) | ((ul_t)r1 << (64-r2 )))"			"Rotate Right"
-   rori		RI_fmt		"wrd(((ul_t)r1 >> imm) | ((ul_t)r1 << (64-imm)))"			"Rotate Right Immediate"
-   rorw		Rw_fmt		"wrd(((ul_t)r1 << r2 ) | ((ul_t)r1 >> (64-r2 )))"			"Rotate Right Word"
-   roriw	RI_fmt		"wrd(((ui_t)r1 >> r2 ) | ((ui_t)r1 << (32-r2 )))"			"Rotate Right Immediate Word"
+   sll		R_fmt		"wrd(          r1 <<           r2 )"						"Shift Left Logical"
+   slli		RI_fmt		"wrd(          r1 <<           imm)"						"Shift Left Logical Immediate"
+   sllw		Rw_fmt		"wrd((uint32_t)r1 << (uint32_t)r2 )"						"Shift Left Logical Word"
+   slliw	RI_fmt		"wrd((uint32_t)r1 << (uint32_t)imm)"						"Shift Left Logical Immediate Word"
+   srl		R_fmt		"wrd((uint64_t)r1 >> (uint64_t)r2 )"						"Shift Right Logical"
+   srli		RI_fmt		"wrd((uint64_t)r1 >> (uint64_t)imm)"						"Shift Right Logical Immediate"
+   srlw		Rw_fmt		"wrd((uint32_t)r1 >> (uint32_t)r2 )"						"Shift Right Logical Word"
+   srliw	RI_fmt		"wrd((uint32_t)r1 >> (uint32_t)imm)"						"Shift Right Logical Immediate Word"
+   sra		R_fmt		"wrd(          r1 >>           r2 )"						"Shift Right Arithmetic"
+   srai		RI_fmt		"wrd(          r1 >>           imm)"						"Shift Right Arithmetic Immediate"
+   sraw		Rw_fmt		"wrd(          r1 >>           r2 )"						"Shift Right Arithmetic Word"
+   sraiw	RI_fmt		"wrd(          r1 >>           imm)"						"Shift Right Arithmetic Immediate Word"
+   ror		R_fmt		"wrd(((uint64_t)r1 >> r2 ) | ((uint64_t)r1 << (64-r2 )))"		"Rotate Right"
+   rori		RI_fmt		"wrd(((uint64_t)r1 >> imm) | ((uint64_t)r1 << (64-imm)))"		"Rotate Right Immediate"
+   rorw		Rw_fmt		"wrd(((uint32_t)r1 << r2 ) | ((uint32_t)r1 >> (32-r2 )))"		"Rotate Right Word"
+   roriw	RI_fmt		"wrd(((uint32_t)r1 >> r2 ) | ((uint32_t)r1 << (32-imm)))"		"Rotate Right Immediate Word"
 
 # Integer Multiply and Divide
    mul		R_fmt		"wrd( r1 * r2)"								"Multiply"
@@ -189,15 +191,15 @@
    mulhu	R_fmt		"wrd(mulhu( r1, r2))"							"Multiply High Unsigned"
    
    div		R_fmt		"wrd(r2==0 ?  INT64_MAX : (r1==INT64_MIN && r2==-1) ? r1 : r1/r2)"	"Divide"
-   divu		R_fmt		"wrd(r2==0 ? UINT64_MAX : (uint64_t)r1/(uint64_t)r2             )"	"Divide Unsigned"
+   divu		Ru_fmt		"wrd(r2==0 ? UINT64_MAX :                                  r1/r2)"	"Divide Unsigned"
    rem		R_fmt		"wrd(r2==0 ?  INT64_MAX : (r1==INT64_MIN && r2==-1) ? r1 : r1%r2)"	"Remainder"
-   remu		R_fmt		"wrd(r2==0 ? UINT64_MAX : (uint64_t)r1%(uint64_t)r2             )"	"Remainder Unsigned"
+   remu		Ru_fmt		"wrd(r2==0 ? UINT64_MAX :                                  r1%r2)"	"Remainder Unsigned"
    
    mulw		Rw_fmt,64	"wrd( r1 * r2)"								"Multiply Word"
    divw		Rw_fmt,64	"wrd(r2==0 ?  INT32_MAX : (r1==INT32_MIN && r2==-1) ? r1 : r1/r2)"	"Divide"
-   divuw	Rw_fmt,64	"wrd(r2==0 ? UINT32_MAX : (uw_t_t)r1/(uw_t_t)r2             )"		"Divide Unsigned"
+   divuw	Ruw_fmt,64	"wrd(r2==0 ? UINT32_MAX :                                  r1/r2)"		"Divide Unsigned"
    remw		Rw_fmt,64	"wrd(r2==0 ?  INT32_MAX : (r1==INT32_MIN && r2==-1) ? r1 : r1%r2)"	"Remainder"
-   remuw	Rw_fmt,64	"wrd(r2==0 ? UINT32_MAX : (uw_t_t)r1%(uw_t_t)r2             )"		"Remainder Unsigned"
+   remuw	Ruw_fmt,64	"wrd(r2==0 ? UINT32_MAX :                                  r1%r2)"		"Remainder Unsigned"
 
 # Floating Point Instructions
    fadd.f	Ff_fmt		"wrd(f32_add(r1, r2))"							"FP Single Add"
@@ -227,15 +229,15 @@
    fsgnjx.d	Rd_fmt		"wrd(f64_sgnj(r1, r2, false,true ))"					"FP Double Inject Exclusive-Or Sign"
 
 # Floating Point Multiply-Add Instructions
-   fmadd.f 	 F3f_fmt	"wrd(f32_mulAdd(           r1 , r2,            r3 )"			"FP Multiply-Add Float"
-   fmsub.f 	 F3f_fmt	"wrd(f32_mulAdd(           r1 , r2, f32_invsgn(r3))"			"FP Multiply-Subtract Float"
-   fnmsub.f 	 F3f_fmt	"wrd(f32_mulAdd(f32_invsgn(r1), r2,            r3 )"			"FP Negative Multiply-Add Float"
-   fnmadd.f 	 F3f_fmt	"wrd(f32_mulAdd(f32_invsgn(r1), r2, f32_invsgn(r3))"			"FP Negative Multiply-Subtract Float"
+   fmadd.f 	 F3f_fmt	"wrd(f32_mulAdd(           r1 , r2,            r3 ))"			"FP Multiply-Add Float"
+   fmsub.f 	 F3f_fmt	"wrd(f32_mulAdd(           r1 , r2, f32_invsgn(r3)))"			"FP Multiply-Subtract Float"
+   fnmsub.f 	 F3f_fmt	"wrd(f32_mulAdd(f32_invsgn(r1), r2,            r3 ))"			"FP Negative Multiply-Add Float"
+   fnmadd.f 	 F3f_fmt	"wrd(f32_mulAdd(f32_invsgn(r1), r2, f32_invsgn(r3)))"			"FP Negative Multiply-Subtract Float"
    
-   fmadd.d 	 F3d_fmt	"wrd(f64_mulAdd(           r1 , r2,            r3 )"			"FP Multiply-Add Double"
-   fmsub.d 	 F3d_fmt	"wrd(f64_mulAdd(           r1 , r2, f64_invsgn(r3))"			"FP Multiply-Subtract Double"
-   fnmsub.d 	 F3d_fmt	"wrd(f64_mulAdd(f64_invsgn(r1), r2,            r3 )"			"FP Negative Multiply-Add Double"
-   fnmadd.d 	 F3d_fmt	"wrd(f64_mulAdd(f64_invsgn(r1), r2, f64_invsgn(r3))"			"FP Negative Multiply-Subtract Double"
+   fmadd.d 	 F3d_fmt	"wrd(f64_mulAdd(           r1 , r2,            r3 ))"			"FP Multiply-Add Double"
+   fmsub.d 	 F3d_fmt	"wrd(f64_mulAdd(           r1 , r2, f64_invsgn(r3)))"			"FP Multiply-Subtract Double"
+   fnmsub.d 	 F3d_fmt	"wrd(f64_mulAdd(f64_invsgn(r1), r2,            r3 ))"			"FP Negative Multiply-Add Double"
+   fnmadd.d 	 F3d_fmt	"wrd(f64_mulAdd(f64_invsgn(r1), r2, f64_invsgn(r3)))"			"FP Negative Multiply-Subtract Double"
 
 
 
