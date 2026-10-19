@@ -8,6 +8,7 @@
 #include <sys/types.h>
 
 #include "caveat.h"
+#include "hart.h"
 
 inline bool match(uint32_t b, uint32_t mask, uint32_t code, Opcode_t op, Insn_t& i, int rd, int rs1, int rs2, int rs3, int immed) {
   if ((b & mask) == code && (ISA[op] & this_isa) == ISA[op]) {
@@ -33,15 +34,6 @@ inline bool match(uint32_t b, uint32_t mask, uint32_t code, Opcode_t op, Insn_t&
   return false;
 }
 
-
-Insn_t decoder(uintptr_t pc)
-{
-  int32_t b = *(int32_t*)pc;
-  Insn_t i;
-  
-#define x( lo, len) ((b >> lo) & ((1 << len)-1))
-#define xs(lo, len) (b << (32-lo-len) >> (32-len))
-  
 #include "decoder.h"
 
   fprintf(stderr, "Illegal instruction pc=%lx, %08x\n", pc, *(unsigned*)pc);

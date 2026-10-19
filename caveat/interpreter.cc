@@ -50,21 +50,11 @@ bool hart_t::execute_instruction(Insn_t insn, reg_t* ap)
 
 #define imm	         insn.immed()
 #define uimm	(uxlen_t)insn.immed()
-#define wrd(e)	(*ap++)=s.reg[insn.rd()].x=(e)
-#define r1	s.reg[insn.rs1()].x
-#define r2	s.reg[insn.rs2()].x
-#define r3	s.reg[insn.rs3()].x
-#define wud(e)	(*ap++)=s.reg[insn.rd()].u=(e)
-#define u1	s.reg[insn.rs1()].u
-#define u2	s.reg[insn.rs2()].u
-#define wfd(e)	(*ap++)=s.reg[insn.rd()].raw=((uint64_t)-1<<32)|(e.v)
-#define f1	s.reg[insn.rs1()].f
-#define f2	s.reg[insn.rs2()].f
-#define f3	s.reg[insn.rs3()].f
-#define wdd(e)	(*ap++)=s.reg[insn.rd()].raw=(e.v)
-#define d1	s.reg[insn.rs1()].d
-#define d2	s.reg[insn.rs2()].d
-#define d3	s.reg[insn.rs3()].d
+  //#define wrd(e)	(*ap++)=s.reg[insn.rd()]=(e)
+#define wrd(e)	s.reg[insn.rd()]=(e)
+#define r1	insn.rs1()
+#define r2	insn.rs2()
+#define r3	insn.rs3()
 
 #define load_reserved(T, a)         *(T*)(*ap++=a)
 #define store_conditional(T, a, v)  wrd( (*(T*)(*ap++=a)=(v), 0) )

@@ -8,34 +8,30 @@ from dataclasses import dataclass
 class Field:
     hi:		int
     lo:		int
-    funcno:	int
+    func:	str
 fields = {}
 
 @dataclass
-class Reg_Extractor:
-    n:		int
-    func:	str
-reg_extractors = {}
-
-@dataclass
 class Format:
-    bitpat:	str
+    bitpat:	str             # encoding bit pattern
+    reglist:	any		# rd,rs1,rs2,rs3 with type
     flags:	str
     asm:	str
 formats = {}
 
 @dataclass
 class Instruction:
-    bitpat:	str
-    flags:	str
-    asm:	str
-    action:	str
-    operands:	str = None
-    length:	int = None
-    immed:	str = None
-    longimm:	bool = None
-    code:	str = None
-    mask:	str = None
+    bitpat:	str             # encoding bit pattern
+    reglist:	any		# rd,rs1,rs2,rs3 with type
+    flags:	str             # attributes and isa
+    asm:	str             # how to print
+    action:	str             # C++ statement for interpreter
+    operands:	any  = None	# list of fields in instruction
+    length:	int  = None	# instruction length in bytes
+    immed:	str  = None	# extraction function number
+    longimm:	bool = None	# if >15 bits
+    code:	str  = None	# for decoder.h
+    mask:	str  = None
 insns = {}
 
 @dataclass
@@ -47,7 +43,7 @@ hooks = {}
 
 opcodes = []
 mapping = {}
-default_operands = []
+default_reglist = []
 
 reg_extractors = {}
 imm_extractors = {}
@@ -56,20 +52,18 @@ field_declaration	= re.compile(r'^@field\s+(\(([^)]*)\))?\s*"""')
 
 
 field_line  = re.compile(r"\s*(\w+)\[(\d+):(\d+)\]\s+\'([^\']*)\'")
-#format_line = re.compile(r'^\s*(\w+)\s+\"([^"]*)\"\s+(\S+)\s+(\S+)\s+\"([^"]*)\"')
-format_line = re.compile(r'^\s*(\w+)\s+\"([^"]*)\"\s+(\S+)\s+(\S+)')
+format_line = re.compile(r'^\s*(\w+)\s+\"([^"]*)\"\s+(\S+)\s+(\S+)\s+(\S+)')
 map_section = re.compile(r'^@map\s+(\w+)\[(\d+):(\d+)\]\s+"""')
-op_explicit = re.compile(r'^\s*(\S+)\s+\"([^"]*)\"(\([^]]*\))?\s+(\S+)\s+(\S+)\s+\"([^"]*)\"')
-op_with_fmt = re.compile(r'^\s*(\S+)\s+(\S+)\s+\"([^"]*)\"\s+\"([^"]*)\"')
+op_explicit = re.compile(r'^\s*(\S+)\s+\"([^"]*)\"\s+(\S+)\s+(\S+)\s+(\S+)\s+\"([^"]*)\"')
+op_with_fmt = re.compile(r'^\s*(\S+)\s+(\S+)\s+\"([^"]*)\"(\s+\"([^"]*)\")?')
 
 hook_spec = re.compile(r'^\?(\w+)\[(\d+)\]')
-reg_type = re.compile(r'^(\w+)(\.(\w+))?')
 
 def eprint(*args):
-    sys.stderr.write(' '.join(*args) + '\n')
+    sys.stderr.write(' '.join(args) + '\n')
 
 def die(*args):
-    eprint(args)
+    sys.stderr.write(' '.join(args) + '\n')
     exit(-1)
 
 def unrecognized(line):
@@ -78,7 +72,7 @@ def unrecognized(line):
         print(line)
         exit(-1)
 
-
+        
 #
 # Parse isa.def file
 #
@@ -88,9 +82,9 @@ with open(sys.argv[1]) as f:
         line = lines.pop(0)
         m = field_declaration.match(line)
         if m:
-            dummy, default_ops = m.groups()
-            if default_ops != None:
-                default_operands = default_ops.split(',')
+            dummy, default_regs = m.groups()
+            if default_regs:
+                default_reglist = default_regs.split(',')
             line = lines.pop(0)
             while line != '"""\n':
                 m = field_line.match(line)
@@ -98,10 +92,7 @@ with open(sys.argv[1]) as f:
                     name, hi, lo, regfunc = m.groups()
                     hi = int(hi)
                     lo = int(lo)
-                    if regfunc not in reg_extractors:
-                        n = len(reg_extractors)
-                        reg_extractors[regfunc] = Reg_Extractor(n, 'rx{:d}(b) {{ int n = x({:d},{:d}); return {:s}; }}'.format(n, lo, hi-lo+1, regfunc))
-                    regfunc = reg_extractors[regfunc].n
+                    regfunc = 'int n=x({:d},{:d}); n={:s};'.format(lo, hi-lo+1, regfunc)
                     fields[name] = Field(hi, lo, regfunc)
                 else:
                     unrecognized(line)
@@ -111,9 +102,10 @@ with open(sys.argv[1]) as f:
             while line != '"""\n':
                 m = format_line.match(line)
                 if m:
-                    name, bitpat, flags, asm = m.groups()
+                    name, bitpat, reglist, flags, asm = m.groups()
                     flags = flags.split(',')
-                    formats[name] = Format(bitpat, flags, asm)
+                    reglist = reglist.split(',')
+                    formats[name] = Format(bitpat, reglist, flags, asm)
                 else:
                     unrecognized(line)
                 line = lines.pop(0)
@@ -132,9 +124,6 @@ with open(sys.argv[1]) as f:
             code = 0
             line = lines.pop(0)
             while line != '"""\n':
-#                if re.match("^[ ]*(#.*)?", line):
-#                    line = lines.pop(0)
-#                    continue
                 tuple = line.split()
                 for opcode in tuple:
                     if opcode[0] == '#':
@@ -157,22 +146,20 @@ with open(sys.argv[1]) as f:
             m = op_with_fmt.match(line)
             n = op_explicit.match(line)
             if m:
-                name, fmt, flags, action = m.groups()
+                name, fmt, action, dummy, description = m.groups()
                 tuple = fmt.split(',')
                 format_name = tuple[0]
                 if format_name not in formats:
                     die('Undefined format', format_name, 'in', line)
                 fmt = formats[format_name]
-                operands = default_operands
                 flags = fmt.flags + tuple[1:]
-                insns[name] = Instruction(fmt.bitpat, flags, fmt.asm, action, operands)
+                insns[name] = Instruction(fmt.bitpat, fmt.reglist, flags, fmt.asm, action)
                 opcodes.append(name)
             elif n:
-                name, bitpat, operands, flags, asm, action = n.groups()
-                if not operands:
-                    operands = []
+                name, bitpat, reglist, flags, asm, action = n.groups()
+                reglist = reglist.split(',')
                 flags = flags.split(',')
-                insns[name] = Instruction(bitpat, flags, asm, action, operands)
+                insns[name] = Instruction(bitpat, reglist, flags, asm, action)
                 opcodes.append(name)
             else:
                 if unrecognized(line):
@@ -190,25 +177,26 @@ for opcode in insns:
     immed = []
     # process bit pattern chucks from right to left
     for b in reversed(bitpat.split()):
-        if re.match('[01]+', b):
+        if re.match('[01]+', b):		# explicit bits of instruction
             code |= int(b, 2) << pos
             mask |= ((1<<len(b))-1) << pos
             pos += len(b)
-        elif re.match('[.]+', b):
+        elif re.match('[.]+', b):		# don't-care bits of instruction
             pos += len(b)
-        elif b[0] == '?':
+            
+        elif b[0] == '?':			# hook for bits of instruction
             m = hook_spec.match(b)
             if not m:
                 die('Bad hook', b, 'in', bitpat)
             name, width = m.groups()
             width = int(width)
-            if name in hooks:
-                h = hooks[name]
+            if name in hooks:			#    hook to format
+                h = hooks[name]                 #      = using alternate sub-format
                 if opcode not in h.table:
                     die('opcode', opcode, 'not in hook table')
                 value = h.table[opcode]
-            elif name in mapping:
-                h = hooks[mapping[name]]
+            elif name in mapping:		#     hook to specific instruction
+                h = hooks[mapping[name]]        #       = alternate opcode
                 value = h.table[name]
             else:
                 print(mapping)
@@ -218,15 +206,13 @@ for opcode in insns:
             code |= value << pos
             mask |= ((1 << width) -1) << pos
             pos += width
-        elif re.match('^[a-z_A-Z]', b):
-            m = reg_type.match(b)
-            if not m:
-                die('Bad register specifier "{:s}" for {:s} "{:s}"'.format(b, opcode, bitpat))
-            name, dummy, typ = m.groups()
-            if name not in fields:
-                die('Unknown register field name', name, 'in', bitpat)
-            operands.append('rx({:d},b)->{:s}'.format(fields[name].funcno, typ))
-            pos += fields[name].hi - fields[name].lo + 1
+            
+        elif re.match(r'^\w+', b):		# register field specifier
+            if b not in fields:
+                die('Unknown register field b', b, 'in', bitpat)
+            operands.append(b)
+            pos += fields[b].hi - fields[b].lo + 1
+            
         elif re.match(r'\{[^}]+\}', b):
             b = b[1:-1]
             tuple = []
@@ -251,7 +237,7 @@ for opcode in insns:
             eprint('Unknown field', b, 'in bits "', bitpat, '"')
             exit(-1)
     if pos % 8 != 0:
-        die('Length', pos, 'not multiple of 8 bits', bitpat)
+        die('Length {:d} not multiple of 8 bits'.format(pos), bitpat)
     if len(immed) == 0:
         immed = '0'
     else:
@@ -387,7 +373,7 @@ with open('newcode.tmp', 'w') as f:
         f.write('enum {:s}_t {{'.format(flag))
         for t in sorted(table.keys()):
             f.write('\n  {:16s} = 1 << {:d},'.format(flag+'_'+t, table[t]))
-        f.write('\n}};\n')
+        f.write('\n};\n')
         f.write('typedef {:s} {:s}_bv_t;\n\n'.format(typ, flag))
 diffcp('../caveat/opcodes.h')
 
@@ -410,14 +396,26 @@ with open('newcode.tmp', 'w') as f:
     #
     #  field extraction functions
     #
-    for func in reg_extractors:
-        f.write('  static int rx{:d}(b) {:s}\n'.format(reg_extractors[func].n, reg_extractors[func].func))
+    f.write("""
+#define x( lo, len) ((b >> lo) & ((1 << len)-1))
+#define xs(lo, len) (b << (32-lo-len) >> (32-len))
+
+""")
+    for name in fields:
+        f.write('  static int {:s}(unsigned b) {{ {:s} return n; }}\n'.format(name, fields[name].func))
     f.write('\n\n')
 
     for func in imm_extractors:
-        f.write('  static int ix{:d}(b) {{ return {:s}; }}\n'.format(imm_extractors[func], func))
+        f.write('  static int ix{:d}(unsigned b) {{ return {:s}; }}\n'.format(imm_extractors[func], func))
     f.write('\n\n')
 
+    f.write("""
+Insn_t decoder(uintptr_t pc)
+{
+  int32_t b = *(int32_t*)pc;
+  Insn_t i;
+  
+""")
     for opcode in opcodes:
         if opcode not in insns:
             continue
@@ -426,14 +424,22 @@ with open('newcode.tmp', 'w') as f:
         digits = i.length * 2
         code = '0x'+hex(i.code)[2:].zfill(digits)
         mask = '0x'+hex(i.mask)[2:].zfill(digits)
-        operands = i.operands
-        while len(operands) < 4:
-            operands.append('0')
+        regs = []
+        for k in range(4):
+            if k < len(i.reglist) and i.reglist[k] != '-':
+                tuple = i.reglist[k].split('.')
+                if len(tuple) < 2:
+                    print(opcode, i.reglist)
+                    die("Bad register list")
+                regs.append('{:s}(b)'.format(tuple[0]))
+            else:
+                regs.append('0')
         f.write('  if (b&{:s}=={:s}) '.format(mask, code))
+        f.write('return Insn_t({:15s}, {:10s}, {:10s}, '.format('Op_'+opname, regs[0], regs[1]))
         if i.longimm:
-            f.write('return Insn_t({:15s}, {:s}, {:s}, {:s});\n'.format(opname, operands[0], operands[1], i.immed))
+            f.write('{:s});\n'.format(i.immed))
         else:
-            f.write('return Insn_t({:15s}, {:s}, {:s}, {:s}, {:s}, {:s});\n'.format(opname, operands[0], operands[1], operands[2], operands[3], i.immed))
+            f.write('{:10s}, {:10s}, {:s});\n'.format(regs[2], regs[3], i.immed))
 diffcp('../caveat/decoder.h')
 
 
@@ -443,8 +449,18 @@ diffcp('../caveat/decoder.h')
 with open('newcode.tmp', 'w') as f:
     for opcode in insns:
         i = insns[opcode]
-        opname = opcode.replace('.','_')
-        f.write('    case {:20s} {:s}; s.pc+={:d}; break;\n'.format(opname+':', i.action, i.length))
+        opname = 'Op_'+opcode.replace('.','_')
+        #
+        # change register specifiers to refer to actual register with type
+        #
+        action = i.action
+        for k in range(len(i.reglist)):
+            rl = i.reglist[k]
+            if rl != '-':
+                name, typ = rl.split('.')
+                into = 's.reg[r{:d}].{:s}'.format(k, typ)
+                action = action.replace('r{:d}'.format(k), into)
+        f.write('    case {:20s} {:s}; s.pc+={:d}; break;\n'.format(opname+':', action, i.length))
 diffcp('../caveat/semantics.h')
 
 

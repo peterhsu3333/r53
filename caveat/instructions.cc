@@ -56,10 +56,16 @@ int sdisasm(char* buf, uintptr_t pc, const Insn_t* i)
     return n;
   }
   uint32_t b = *(uint32_t*)pc;
-  if (i->compressed())
+  switch (i->length()) {
+  case 2:
     n += sprintf(buf+n, "    %04x  ", b&0xFFFF);
-  else
+    break;
+  case 4:
     n += sprintf(buf+n, "%08x  ",     b);
+    break;
+  default:
+    die("Unknown instruction length %d", i->length());
+  }
   n += sprintf(buf+n, "%-23s", op_name[i->opcode()]);
   char sep = ' ';
   if (i->rd()  != NOREG) { n += sprintf(buf+n, "%c%s", sep, reg_name[i->rd() ]); sep=','; }

@@ -14,15 +14,22 @@ extern option<bool> conf_show;
   RISC-V processor state.
 */
 union reg_t {
-  xlen_t  x;			// signed integer view
-  uxlen_t u;			// unsigned integer view
+  xlen_t  l;			// signed long integer view
+  uxlen_t ul;			// unsigned long integer view
+  int32_t w;			// signed word integer view
+  uint32_t uw;			// unsigned word integer view
   uint64_t raw;			// internal boxed floating point view
   float64_t d;			// double precision FP view
   float32_t f;			// single precision FP view
-  xlen_t  operator=(xlen_t  e) { x=e; return x; }
-  uxlen_t operator=(uxlen_t e) { x=e; return x; }
+  uint64_t operator=(xlen_t    e) {  l=e; return raw; }
+  uint64_t operator=(uxlen_t   e) { ul=e; return raw; } 
+  uint64_t operator=(int32_t   e) {  l=e; return raw; }
+  uint64_t operator=(uint32_t  e) { ul=e; return raw; }
+ 
+  uint64_t operator=(float64_t e) { raw=e.v ; return raw; }
+  uint64_t operator=(float32_t e) { raw=e.v ; return raw; }
   //uint64_t operator=(float32_t e) { raw=box(e.v); return raw; }
-  uint64_t operator=(float64_t e) { raw=    e.v ; return raw; }
+  //uint64_t operator=(float64_t e) { raw=    e.v ; return raw; }
 };
 
 struct processor_state_t {

@@ -39,7 +39,7 @@ extern const uint64_t stop_before[];
 extern const uint64_t stop_after[];
 
 extern ISA_bv_t this_isa;
-const  ISA_bv_t ISA_G = ISA_I|ISA_M|ISA_A|ISA_F|ISA_D;
+//const  ISA_bv_t ISA_G = ISA_I|ISA_M|ISA_A|ISA_F|ISA_D;
 
 /*
  * RISC-V scalar registers.
@@ -53,9 +53,10 @@ const  ISA_bv_t ISA_G = ISA_I|ISA_M|ISA_A|ISA_F|ISA_D;
  * Decoded RISC-V instruction.
  */
 struct alignas(8) Insn_t {
-  Opcode_t op_code;
-  uint8_t op_rd;
-  uint8_t op_rs1;
+  Opcode_t op_code  : 13;
+  unsigned op_len   :  3;
+  uint8_t  op_rd;
+  uint8_t  op_rs1;
   union {
     struct {
       int16_t imm;
@@ -66,7 +67,7 @@ struct alignas(8) Insn_t {
   };
   void setimm(int16_t v) { op.imm=(v<<1)|0x1; }
 public:
-  bool compressed() const { return op_code <= Last_Compressed_Opcode; }
+  unsigned length() const { return op_len; }
   bool longimmed() const { return (op.imm & 0x1) == 0; }
   long immed() const { return longimmed() ? op_longimm : op.imm>>1; }
 
@@ -75,6 +76,10 @@ public:
   uint rs1() const { return op_rs1; }
   uint rs2() const { return op.rs2; } // resume previous
   uint rs3() const { return op.rs3; }
+
+  Insn_t() { }
+  Insn_t(Opcode_t code, uint8_t rd, uint8_t r1, int imm)                         { op_code=code; op_len=4; op_rd=rd; op_rs1=r1;                   op_longimm=imm ; }
+  Insn_t(Opcode_t code, uint8_t rd, uint8_t r1, uint8_t r2, uint8_t r3, int imm) { op_code=code; op_len=4; op_rd=rd; op_rs1=r1; op.rs2=r2; op.rs3=r3; setimm(imm); }
   
   friend Insn_t decoder(uintptr_t pc);
   friend void substitute_cas(uintptr_t pc, Insn_t* i3);
