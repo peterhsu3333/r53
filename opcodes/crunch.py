@@ -26,6 +26,7 @@ class Instruction:
     flags:	str             # attributes and isa
     asm:	str             # how to print
     action:	str             # C++ statement for interpreter
+    original:	str		# Line from .def, for debugging
     operands:	any  = None	# list of fields in instruction
     length:	int  = None	# instruction length in bytes
     immed:	str  = None	# extraction function number
@@ -153,13 +154,13 @@ with open(sys.argv[1]) as f:
                     die('Undefined format', format_name, 'in', line)
                 fmt = formats[format_name]
                 flags = fmt.flags + tuple[1:]
-                insns[name] = Instruction(fmt.bitpat, fmt.reglist, flags, fmt.asm, action)
+                insns[name] = Instruction(fmt.bitpat, fmt.reglist, flags, fmt.asm, action, line)
                 opcodes.append(name)
             elif n:
                 name, bitpat, reglist, flags, asm, action = n.groups()
                 reglist = reglist.split(',')
                 flags = flags.split(',')
-                insns[name] = Instruction(bitpat, reglist, flags, asm, action)
+                insns[name] = Instruction(bitpat, reglist, flags, asm, action, line)
                 opcodes.append(name)
             else:
                 if unrecognized(line):
@@ -209,7 +210,7 @@ for opcode in insns:
             
         elif re.match(r'^\w+', b):		# register field specifier
             if b not in fields:
-                die('Unknown register field b', b, 'in', bitpat)
+                die('Unknown register field b', b, 'in', insns[opcode].original)
             operands.append(b)
             pos += fields[b].hi - fields[b].lo + 1
             
