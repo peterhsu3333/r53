@@ -59,7 +59,6 @@ void hart_t::initialize()
 
 hart_t::hart_t(int argc, const char* argv[], const char* envp[])
 {
-#if 0
   // figure out architecture options
   if (strncmp(conf_arch(), "rv64", 4) == 0)
     this_isa |= ISA_64;
@@ -69,7 +68,7 @@ hart_t::hart_t(int argc, const char* argv[], const char* envp[])
     die("arch must be either rv64 or rv32");
   for (int k=4; conf_arch()[k]; ++k) {
     switch (toupper(conf_arch()[k])) {
-    case 'G':  this_isa |= ISA_G;  break;
+    case 'G':  this_isa |= ISA_I|ISA_M|ISA_A|ISA_F|ISA_D;  break;
     case 'I':  this_isa |= ISA_I;  break;
     case 'M':  this_isa |= ISA_M;  break;
     case 'A':  this_isa |= ISA_A;  break;
@@ -79,7 +78,6 @@ hart_t::hart_t(int argc, const char* argv[], const char* envp[])
     default:  die("Invalid architecture %s", conf_arch());
     }
   }
-#endif
   
   memset(&s, 0, sizeof(processor_state_t));
   uintptr_t stack_pointer = emulate_execve(argv[0], argc, argv, envp, s.pc);

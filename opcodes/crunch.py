@@ -43,7 +43,7 @@ class Hook:
     table:	any
 hooks = {}
 
-opcodes = []
+opcodes = [ 'ZERO' ]
 mapping = {}
 default_reglist = []
 
@@ -285,7 +285,10 @@ defined_flags = {}
 def emit_bitvec(within, prefix, varname):
     defined_flags[prefix] = {}
     f.write('const {:s}_bv_t {:s}[] = {{\n'.format(prefix, varname))
-    for opcode in insns:
+    for opcode in opcodes:
+        if opcode not in insns:
+            f.write('  /* {:19s} */ {:20s}\n'.format(opcode, '0,'))
+            continue
         bv = []
         for a in insns[opcode].flags: # list of attributes
             if not a.isalnum():
@@ -311,7 +314,7 @@ def emit_mask(attrkey, varname):
             f.write('  0x{:016x},\n'.format(mask))
             mask = 0
             n = 0
-        if attrkey in insns[opcode].flags:
+        if opcode in insns and attrkey in insns[opcode].flags:
             mask |= 1 << n
         n += 1
     f.write('  0x{:016x},\n'.format(mask))
@@ -361,7 +364,7 @@ diffcp('../caveat/constants.h')
 # Create opcodes.h
 # Important:  opcode list augmented with these pseudo instructions
 #
-opcodes = ['ZERO'] + opcodes + ['ILLEGAL', 'UNKNOWN']
+opcodes = opcodes + ['ILLEGAL', 'UNKNOWN']
 
 with open('newcode.tmp', 'w') as f:
     f.write('enum Opcode_t : short {')
@@ -426,7 +429,6 @@ Insn_t decoder(uintptr_t pc)
     for opcode in opcodes:
         if opcode not in insns:
             continue
-        opname = opcode.replace('.','_')
         i = insns[opcode]
         digits = i.length * 2
         code = '0x'+hex(i.code)[2:].zfill(digits)
@@ -446,9 +448,10 @@ Insn_t decoder(uintptr_t pc)
                 regs.append(name+'(b)')
             else:
                 regs.append('0')
+        opname = 'Op_' + opcode.replace('.','_')
         f.write('#line {:d} "{:s}"\n'.format(i.lineno, isa_file_name))
-        f.write('  if (b&{:s}=={:s}) '.format(mask, code))
-        f.write('return Insn_t({:15s}, {:10s}, {:10s}, '.format('Op_'+opname, regs[0], regs[1]))
+        f.write('  if (match(b, {:s}, {:s}, {:s})) '.format(mask, code, opname))
+        f.write('return Insn_t({:15s}, {:10s}, {:10s}, '.format(opname, regs[0], regs[1]))
         if i.longimm:
             f.write('{:s});\n'.format(i.immed))
         else:
