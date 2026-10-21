@@ -78,8 +78,8 @@ public:
   uint rs3() const { return op.rs3; }
 
   Insn_t() { }
-  Insn_t(Opcode_t code, uint8_t rd, uint8_t r1, int imm)                         { op_code=code; op_len=4; op_rd=rd; op_rs1=r1;                   op_longimm=imm ; }
-  Insn_t(Opcode_t code, uint8_t rd, uint8_t r1, uint8_t r2, uint8_t r3, int imm) { op_code=code; op_len=4; op_rd=rd; op_rs1=r1; op.rs2=r2; op.rs3=r3; setimm(imm); }
+  Insn_t(Opcode_t code, int l, uint8_t rd, uint8_t r1, int imm)                         { op_code=code; op_len=l; op_rd=rd; op_rs1=r1;                   op_longimm=imm ; }
+  Insn_t(Opcode_t code, int l, uint8_t rd, uint8_t r1, uint8_t r2, uint8_t r3, int imm) { op_code=code; op_len=l; op_rd=rd; op_rs1=r1; op.rs2=r2; op.rs3=r3; setimm(imm); }
   
   friend Insn_t decoder(uintptr_t pc);
   friend void substitute_cas(uintptr_t pc, Insn_t* i3);

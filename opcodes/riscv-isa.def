@@ -60,7 +60,7 @@
    c.lwsp	"010 {5}    rd  {4:2|7:6}     10"		rd.w			64,C,ld		-		"wrd(LOAD( int32_t, sp+imm))"
    c.flwsp	"011 {5}    rd  {4:2|7:6}     10"		fd.f			32,C,F,ld	-		"wfd(f32(LOAD(uint32_t, sp+imm)))"
    c.ldsp	"011 {5}    rd  {4:3|8:6}     10"		rd.l			C,ld		-		"wrd(LOAD( int64_t, sp+imm))"
-   c.ret	"100 0     00001        00000 10"		-			C,uj,>		-		"reg_jump(s.reg[1].l)"
+#   c.ret	"100 0     00001        00000 10"		-			C,uj,>		-		"reg_jump(s.reg[1].l)"
    c.jr		"100 0      rd          00000 10"		-,rd.l			C,uj,>		-		"reg_jump(r1)"
    c.mv		"100 0      rd            cs2 10"		rd.l,cs2.l		C		-		"wrd(r1)"
    c.ebreak	"100 1     00000        00000 10"		-			C,ex		-		"ebreak()"
@@ -78,10 +78,10 @@
    lui		"{-31:12}                   rd    01101 11"	rd.l			I		d,u		"wrd(     imm)"
    auipc	"{-31:12}                   rd    00101 11"	rd.l			I		d,u		"wrd(s.pc+imm)"
 
-   j		"{-20|10:1|11|19:12}     00000    11011 11"	-			I,uj,>		a		"             jump(s.pc+imm)"
+#   j		"{-20|10:1|11|19:12}     00000    11011 11"	-			I,uj,>		a		"             jump(s.pc+imm)"
    jal		"{-20|10:1|11|19:12}        rd    11011 11"	rd.l			I,uj,>		d,a		"wrd(s.pc+4); jump(s.pc+imm)"
-   ret		"{-11:0}       00001 000 00000    11001 11"	-			I,uj,>		d,s		"reg_jump((s.reg[1].l + imm) & ~1L)"
-   jr		"{-11:0}         rs1 000 00000    11001 11"	-,rs1.l			I,uj,>		d,s		"reg_jump((r1         + imm) & ~1L)"
+#   ret		"{-11:0}       00001 000 00000    11001 11"	-			I,uj,>		d,s		"reg_jump((s.reg[1].l + imm) & ~1L)"
+#   jr		"{-11:0}         rs1 000 00000    11001 11"	-,rs1.l			I,uj,>		d,s		"reg_jump((r1         + imm) & ~1L)"
    jalr		"{-11:0}         rs1 000    rd    11001 11"	rd.l,rs1.l		I,uj,>		d,s		"{ long npc=(r1+imm)&~1L; wrd(s.pc+4); reg_jump(npc); }"
 
    beq		"{-12|10:5}  rs2 rs1 000 {4:1|11} 11000 11"	-,rs1.l,rs2.l		I,cj,>		s,t,p		"branch(r1 == r2, s.pc+imm, s.pc+4)"

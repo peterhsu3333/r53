@@ -110,16 +110,14 @@ void hart_t::print(uintptr_t pc, Insn_t* i, FILE* out)
 {
   fprintf(out, "[%d] ", gettid());
   if (i->rd() == NOREG) {
-#if 0
     if (ATTR[i->opcode()] & ATTR_st)
       fprintf(out, "%4s[%016lx] ", reg_name[i->rs2()], s.reg[i->rs2()].ul); 
     else if ((ATTR[i->opcode()] & (ATTR_cj|ATTR_uj)) && (i->rs1() != NOREG))
-      fprintf(out, "%4s[%016lx] ", reg_name[i->rs1()], s.reg[i->rs1()].x); 
+      fprintf(out, "%4s[%016lx] ", reg_name[i->rs1()], s.reg[i->rs1()].ul); 
     else if (ATTR[i->opcode()] & ATTR_ex)
-      fprintf(out, "%4s[%016lx] ", reg_name[10], s.reg[10].x);
+      fprintf(out, "%4s[%016lx] ", reg_name[10], s.reg[10].ul);
     else
       fprintf(out, "%4s[%16s] ", "", "");
-#endif
   }
   else
     fprintf(out, "%4s[%016lx] ", reg_name[i->rd()], s.reg[i->rd()].ul);

@@ -84,6 +84,8 @@ with open(isa_file_name) as f:
     lineno = 0
     while lineno < len(lines):
         line=lines[lineno] ; lineno+=1
+        if re.match(r'\s*(\#.*)$', line):
+            continue
         m = field_declaration.match(line)
         if m:
             dummy, default_regs = m.groups()
@@ -180,7 +182,7 @@ for opcode in insns:
     bitpat = insns[opcode].bitpat
     code, mask, pos = 0, 0, 0
     operands = []
-    signed, longimm = False, False
+    longimm = False
     immed = []
     # process bit pattern chucks from right to left
     for b in reversed(bitpat.split()):
@@ -236,9 +238,9 @@ for opcode in insns:
                 lo = int(lo) if colon else hi
                 if lo > hi:
                     die('Bad bit positions', t, 'in', bitpat)
-                if hi >= 13:
+                if hi >= 12:
                     longimm = True
-                immed.append('{:s}({:d},{:d})<<{:d}'.format(extractor, pos, hi-lo+1, lo))
+                immed.append('({:s}({:d},{:d})<<{:d})'.format(extractor, pos, hi-lo+1, lo))
                 pos += hi-lo+1
         else:
             eprint('Unknown field', b, 'in bits "', bitpat, '"')
@@ -407,8 +409,8 @@ with open('newcode.tmp', 'w') as f:
     #  field extraction functions
     #
     f.write("""
-#define x( lo, len) ((b >> lo) & ((1 << len)-1))
-#define xs(lo, len) (b << (32-lo-len) >> (32-len))
+#define x( pos, len) ((b >> pos) & ((1 << len)-1))
+#define xs(pos, len) (b << (32-(pos+len)) >> (32-len))
 
 """)
     for name in fields:
@@ -450,8 +452,8 @@ Insn_t decoder(uintptr_t pc)
                 regs.append('0')
         opname = 'Op_' + opcode.replace('.','_')
         f.write('#line {:d} "{:s}"\n'.format(i.lineno, isa_file_name))
-        f.write('  if (match(b, {:s}, {:s}, {:s})) '.format(mask, code, opname))
-        f.write('return Insn_t({:15s}, {:10s}, {:10s}, '.format(opname, regs[0], regs[1]))
+        f.write('  if (match(b, {:s}, {:s}, {:15s})) '.format(mask, code, opname))
+        f.write('return Insn_t({:15s}, {:d}, {:10s}, {:10s}, '.format(opname, i.length, regs[0], regs[1]))
         if i.longimm:
             f.write('{:s});\n'.format(i.immed))
         else:

@@ -63,7 +63,7 @@ bool hart_t::execute_instruction(Insn_t insn, reg_t* ap)
   
 #define imm	         insn.immed()
 #define uimm	(uxlen_t)insn.immed()
-
+  /*
 #define r1	s.reg[insn.rs1()]
 #define r2	s.reg[insn.rs2()]
 #define r3	s.reg[insn.rs3()]
@@ -71,7 +71,8 @@ bool hart_t::execute_instruction(Insn_t insn, reg_t* ap)
 #define f1	s.reg[insn.rs1()]
 #define f2	s.reg[insn.rs2()]
 #define f3	s.reg[insn.rs3()]
-
+  */
+  
 #define load_reserved(T, a)         *(T*)(*ap++=a)
 #define store_conditional(T, a, v)  wrd( (*(T*)(*ap++=a)=(v), 0) )
 
