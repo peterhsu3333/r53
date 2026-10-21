@@ -30,7 +30,7 @@
     if (incmask & (1<<1)) ++rs1v;
     if (incmask & (1<<2)) ++rs2v;
     if (incmask & (1<<3)) ++rs3v;
-*/  
+*/
 
 bool hart_t::execute_instruction(Insn_t insn, reg_t* ap)
 {
@@ -47,20 +47,30 @@ bool hart_t::execute_instruction(Insn_t insn, reg_t* ap)
   */
 	
 #define LOAD(T, a)     *(T*)(*ap++=a)
-#define STORE(T, a, v) *(T*)(*ap++=a)=(v)
+  //#define STORE(T, a, v) *(T*)(*ap++=a)=(v)
+#define STORE(T, a, v) *((T*)(a))=(v)
 
+#define sp s.reg[2].l
+
+  //#define wrd(e)	(*ap++)=s.reg[insn.rd()]=(e)
+
+#define rreg(n)		s.reg[n].l
+#define wreg(n, e)	s.reg[n]=(e)
+#define wpc(e)		s.pc=(e)
+  
+#define wrd(e)		s.reg[insn.rd()]=(e)
+#define wfd(e)		s.reg[insn.rd()]=(e)
+  
 #define imm	         insn.immed()
 #define uimm	(uxlen_t)insn.immed()
-  //#define wrd(e)	(*ap++)=s.reg[insn.rd()]=(e)
-#define wpc(e)	s.pc=(e)
-#define wrd(e)	s.reg[insn.rd()]=(e)
-#define wfd(e)	s.reg[insn.rd()]=(e)
-#define r1	insn.rs1()
-#define r2	insn.rs2()
-#define r3	insn.rs3()
-#define f1	insn.rs1()
-#define f2	insn.rs2()
-#define f3	insn.rs3()
+
+#define r1	s.reg[insn.rs1()]
+#define r2	s.reg[insn.rs2()]
+#define r3	s.reg[insn.rs3()]
+
+#define f1	s.reg[insn.rs1()]
+#define f2	s.reg[insn.rs2()]
+#define f3	s.reg[insn.rs3()]
 
 #define load_reserved(T, a)         *(T*)(*ap++=a)
 #define store_conditional(T, a, v)  wrd( (*(T*)(*ap++=a)=(v), 0) )

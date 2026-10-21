@@ -25,11 +25,8 @@ union reg_t {
   uint64_t operator=(uxlen_t   e) { ul=e; return raw; } 
   uint64_t operator=(int32_t   e) {  l=e; return raw; }
   uint64_t operator=(uint32_t  e) { ul=e; return raw; }
- 
-  uint64_t operator=(float64_t e) { raw=e.v ; return raw; }
-  uint64_t operator=(float32_t e) { raw=e.v ; return raw; }
-  //uint64_t operator=(float32_t e) { raw=box(e.v); return raw; }
-  //uint64_t operator=(float64_t e) { raw=    e.v ; return raw; }
+  uint64_t operator=(float32_t e) { raw=e.v | 0xffffffff00000000L; return raw; }
+  uint64_t operator=(float64_t e) { raw=e.v;                       return raw; }
 };
 
 struct processor_state_t {
