@@ -12,6 +12,7 @@
  * Word size of simulated processor.
  */
 #define XLEN 64
+#define DEBUG_RING  64
 
 #if XLEN==32
 typedef  int32_t  xlen_t;
@@ -69,7 +70,7 @@ struct alignas(8) Insn_t {
 public:
   unsigned length() const { return op_len; }
   bool longimmed() const { return (op.imm & 0x1) == 0; }
-  long immed() const { return longimmed() ? op_longimm : op.imm>>1; }
+  int immed() const { return longimmed() ? op_longimm : op.imm>>1; }
 
   Opcode_t opcode() const { return op_code; }
   uint rd()  const { return op_rd; }

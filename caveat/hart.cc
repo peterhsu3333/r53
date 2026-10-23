@@ -277,31 +277,40 @@ Header_t* hart_t::find_bb(xlen_t pc)
 
 /*
  * Interprete one basic block, returning whether ended in taken branch.
- * Argument pointer ap should be array reg_t[256] for worse-case if
- * all loads each having both address and data.
  */
-bool hart_t::run_basic_block(reg_t* ap)
+bool hart_t::run_basic_block()
 {
   Header_t* bb = ((*target)->addr == s.pc) ? *target : find_bb(s.pc);
   *target = bb;
+  Result_t dummy;
   //
   // execute basic block except last instruction
   //
-  const Insn_t* i = insnp(bb+1);
-  while (i<insnp(bb+1)+bb->count-1) {
-    if (execute_instruction(*i, ap))
+  int cursor = executed() % DEBUG_RING;
+  const Insn_t* i=insnp(bb+1);
+#ifdef DEBUG
+  for (; i<insnp(bb+1)+bb->count-1; ++i) {
+    debug[cursor].pc = s.pc;
+    debug[cursor].insn = *i;
+    if (execute_instruction(*i, &debug[cursor].result))
       die("unexpected branch!");
-    ++i, ++ap;    
+    cursor = (cursor+1) % DEBUG_RING;
   }
   // last instruction
-  if (execute_instruction(*i, ap)) { // taken branch
-    target = (Header_t**)(i+1);
-    return true;
+  if (execute_instruction(*i, &debug[cursor].result)) {
+#else
+  for (; i<insnp(bb+1)+bb->count-1; ++i) {
+    if (execute_instruction(*i, &dummy))
+      die("unexpected branch!");
   }
-  else if (bb->conditional)	// conditional branch not taken
-    target = (Header_t**)(i+2);
-  else				// last instruction was not branch
-    target = (Header_t**)(i+1);
+  // last instruction
+  if (execute_instruction(*i, &dummy)) { // taken branch
+#endif
+      target = (Header_t**)(i+1); // taken branch
+      return true;
+  }
+  else // conditional branch not taken or last insn not branch
+    target = (Header_t**)(bb->conditional ? (i+2) : (i+1));
   return false;
 }
 

@@ -31,8 +31,7 @@ caveat: $(bins) $(LIBS)
 # Dependencies
 
 caveat.o instructions.o hart.o interpreter.o: caveat.h opcodes.h options.h
-instructions.o: decoder.h constants.h
-decoder.o:  decoder.h
+instructions.o: constants.h
 interpreter.o:  hart.h semantics.h arithmetic.h
 hart.o: hart.h
 proxy_syscall.o: ecall_nums.h
@@ -54,7 +53,7 @@ clean: tidy
 	rm -f *.o *~ ./#*# *.tmp
 
 tidy:
-	rm -f caveat opcodes.h constants.h decoder.h ecall_nums.h semantics.h
+	rm -f caveat opcodes.h constants.h decoder.cc ecall_nums.h semantics.h
 	rm -rf $(CAVA)/include/cava
 	rm -f $(CAVA)/lib/libcava.a
 

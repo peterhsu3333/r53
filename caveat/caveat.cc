@@ -57,9 +57,8 @@ int my_clone_proxy(class hart_t* parent)
 
 void my_interpreter(hart_t* h)
 {
-  reg_t values[256];
   while (1)
-    h->run_basic_block(values);
+    h->run_basic_block();
 }
 
 static jmp_buf return_to_top_level;
@@ -80,8 +79,8 @@ void signal_handler(int nSIGnum, siginfo_t* si, void* vcontext)
   //  context->uc_mcontext.gregs[]
   fprintf(stderr, "\n\nsignal_handler, signum=%d, tid=%d\n", nSIGnum, gettid());
   hart_t* thisCPU = hart_t::find(gettid());
+  longjmp(return_to_top_level, 1);
   exit(-1);
-  //  longjmp(return_to_top_level, 1);
 }
 #endif
 
@@ -128,7 +127,31 @@ int main(int argc, const char* argv[], const char* envp[])
     sigaction(SIGINT,  &action, NULL);
     if (setjmp(return_to_top_level) != 0) {
       fprintf(stderr, "SIGSEGV signal was caught\n");
-      exit(-1);
+#ifdef DEBUG
+      int now = mycpu->executed() % DEBUG_RING;
+      int k = now;
+      do {
+	k = (k-1+DEBUG_RING) % DEBUG_RING;
+	//fprintf(out, "[%d] ", gettid());
+	Insn_t* i = &mycpu->debug[k].insn;
+	reg_t data = mycpu->debug[k].result.data;
+	if (i->rd() == NOREG) {
+	  if (ATTR[i->opcode()] & ATTR_st)
+	    fprintf(stderr, "%4s[%016lx] ", reg_name[i->rs2()], data.ul); 
+	  else if ((ATTR[i->opcode()] & (ATTR_cj|ATTR_uj)) && (i->rs1() != NOREG))
+	    fprintf(stderr, "%4s[%016lx] ", reg_name[i->rs1()], data.ul); 
+	  else if (ATTR[i->opcode()] & ATTR_ex)
+	    fprintf(stderr, "%4s[%016lx] ", reg_name[10], data.ul);
+	  else
+	    fprintf(stderr, "%4s[%16s] ", "", "");
+	}
+	else
+	  fprintf(stderr, "%4s[%016lx] ", reg_name[i->rd()], data.ul);
+	labelpc(mycpu->debug[k].pc, stderr);
+	disasm(mycpu->s.pc, i, "\n", stderr);
+      } while (k != now);
+#endif
+      exit(0);
     }
   }
 #endif
@@ -138,9 +161,9 @@ int main(int argc, const char* argv[], const char* envp[])
   else if (conf_show()) {
     while (1) {
       Insn_t insn = decoder(mycpu->s.pc);
-      reg_t values[2];
+      Result_t result;
       xlen_t oldpc = mycpu->s.pc;
-      mycpu->execute_instruction(insn, values);
+      mycpu->execute_instruction(insn, &result);
       mycpu->print(oldpc, &insn, stderr);
     }
   }

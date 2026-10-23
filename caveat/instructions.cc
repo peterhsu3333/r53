@@ -70,11 +70,11 @@ int sdisasm(char* buf, uintptr_t pc, const Insn_t* i)
   char sep = ' ';
   if (i->rd()  != NOREG) { n += sprintf(buf+n, "%c%s", sep, reg_name[i->rd() ]); sep=','; }
   if (i->rs1() != NOREG) { n += sprintf(buf+n, "%c%s", sep, reg_name[i->rs1()]); sep=','; }
-  if (i->longimmed())    { n += sprintf(buf+n, "%c%ld", sep, i->immed()); }
+  if (i->longimmed())    { n += sprintf(buf+n, "%c%d(0x%x)", sep, i->immed(), i->immed()); }
   else {
     if (i->rs2() != NOREG) { n += sprintf(buf+n, "%c%s", sep, reg_name[i->rs2()]); sep=','; }
     if (i->rs3() != NOREG) { n += sprintf(buf+n, "%c%s", sep, reg_name[i->rs3()]); sep=','; }
-    n += sprintf(buf+n, "%c%ld", sep, i->immed());
+    n += sprintf(buf+n, "%c%d(0x%x)", sep, i->immed(), i->immed());
   }
   return n;
 }

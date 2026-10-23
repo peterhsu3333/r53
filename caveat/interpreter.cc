@@ -32,7 +32,7 @@
     if (incmask & (1<<3)) ++rs3v;
 */
 
-bool hart_t::execute_instruction(Insn_t insn, reg_t* ap)
+bool hart_t::execute_instruction(Insn_t insn, Result_t* ap)
 {
   uintptr_t tmp;
   _executed++;
@@ -46,35 +46,22 @@ bool hart_t::execute_instruction(Insn_t insn, reg_t* ap)
     Abbreviations to keep isa.def semantics short
   */
 	
-#define LOAD(T, a)     *(T*)(*ap++=a)
-  //#define STORE(T, a, v) *(T*)(*ap++=a)=(v)
-#define STORE(T, a, v) *((T*)(a))=(v)
+#define LOAD(T, a)     *(T*)(ap->addr=a)
+#define STORE(T, a, v) *(T*)(ap->addr=a)=(v)
 
-#define sp s.reg[2].l
-
-  //#define wrd(e)	(*ap++)=s.reg[insn.rd()]=(e)
-
+#define sp		s.reg[2].l
 #define rreg(n)		s.reg[n].l
-#define wreg(n, e)	s.reg[n]=(e)
 #define wpc(e)		s.pc=(e)
-  
-#define wrd(e)		s.reg[insn.rd()]=(e)
-#define wfd(e)		s.reg[insn.rd()]=(e)
+
+#define wreg(n, e)	ap->data=s.reg[n]=(e)
+#define wrd(e)		wreg(insn.rd(), (e))
+#define wfd(e)		wreg(insn.rd(), (e))
   
 #define imm	         insn.immed()
 #define uimm	(uxlen_t)insn.immed()
-  /*
-#define r1	s.reg[insn.rs1()]
-#define r2	s.reg[insn.rs2()]
-#define r3	s.reg[insn.rs3()]
-
-#define f1	s.reg[insn.rs1()]
-#define f2	s.reg[insn.rs2()]
-#define f3	s.reg[insn.rs3()]
-  */
   
-#define load_reserved(T, a)         *(T*)(*ap++=a)
-#define store_conditional(T, a, v)  wrd( (*(T*)(*ap++=a)=(v), 0) )
+#define load_reserved(T, a)         *(T*)(ap->addr=a)
+#define store_conditional(T, a, v)  wrd( (*(T*)(ap->addr=a)=(v), 0) )
 
 #define cas32(a, b, c, d) cas<int32_t>(a, b, c, d)
 #define cas64(a, b, c, d) cas<int64_t>(a, b, c, d)

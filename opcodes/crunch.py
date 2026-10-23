@@ -240,7 +240,8 @@ for opcode in insns:
                     die('Bad bit positions', t, 'in', bitpat)
                 if hi >= 12:
                     longimm = True
-                immed.append('({:s}({:d},{:d})<<{:d})'.format(extractor, pos, hi-lo+1, lo))
+                shamt = '<<{:d}'.format(lo) if lo > 0 else ''
+                immed.append('({:s}({:d},{:d}){:s})'.format(extractor, pos, hi-lo+1, shamt))
                 pos += hi-lo+1
         else:
             eprint('Unknown field', b, 'in bits "', bitpat, '"')
@@ -405,12 +406,26 @@ def makelist(table, n, f, name):
     f.write('\n};\n\n')
     
 with open('newcode.tmp', 'w') as f:
-    #
-    #  field extraction functions
-    #
     f.write("""
+/*
+  Copyright (c) 2026 Peter Hsu.  All Rights Reserved.  See LICENCE file for details.
+*/
+#include <stdlib.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <sys/mman.h>
+#include <sys/types.h>
+
+#include "caveat.h"
+#include "hart.h"
+    
 #define x( pos, len) ((b >> pos) & ((1 << len)-1))
-#define xs(pos, len) (b << (32-(pos+len)) >> (32-len))
+#define xs(pos, len) ((int)b << (32-pos-len) >> (32-len))
+
+inline bool match(uint32_t b, uint32_t mask, uint32_t code, Opcode_t op)
+{
+  return (b & mask) == code && (ISA[op] & this_isa) == ISA[op];
+}
 
 """)
     for name in fields:
@@ -458,7 +473,14 @@ Insn_t decoder(uintptr_t pc)
             f.write('{:s});\n'.format(i.immed))
         else:
             f.write('{:10s}, {:10s}, {:s});\n'.format(regs[2], regs[3], i.immed))
-diffcp('../caveat/decoder.h')
+
+    f.write("""
+  fprintf(stderr, "Illegal instruction pc=%lx, %08x\\n", pc, *(unsigned*)pc);
+  return Insn_t(Op_ILLEGAL, 4, 0, 0, 0);
+}
+""")
+            
+diffcp('../caveat/decoder.cc')
 
 
 #
