@@ -12,7 +12,7 @@
  * Word size of simulated processor.
  */
 #define XLEN 64
-#define DEBUG_RING  64
+#define DEBUG_RING  32
 
 #if XLEN==32
 typedef  int32_t  xlen_t;

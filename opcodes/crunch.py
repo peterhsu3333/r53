@@ -475,7 +475,7 @@ Insn_t decoder(uintptr_t pc)
             f.write('{:10s}, {:10s}, {:s});\n'.format(regs[2], regs[3], i.immed))
 
     f.write("""
-  fprintf(stderr, "Illegal instruction pc=%lx, %08x\\n", pc, *(unsigned*)pc);
+  fprintf(stderr, "Unrecognized instruction pc=%lx, %08x\\n", pc, *(unsigned*)pc);
   return Insn_t(Op_ILLEGAL, 4, 0, 0, 0);
 }
 """)

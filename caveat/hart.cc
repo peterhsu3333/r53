@@ -108,7 +108,8 @@ hart_t::~hart_t()
 
 void hart_t::print(uintptr_t pc, Insn_t* i, FILE* out)
 {
-  fprintf(out, "[%d] ", gettid());
+  //fprintf(out, "[%d] ", gettid());
+  fprintf(out, "%11ld ", executed());
   if (i->rd() == NOREG) {
     if (ATTR[i->opcode()] & ATTR_st)
       fprintf(out, "%4s[%016lx] ", reg_name[i->rs2()], s.reg[i->rs2()].ul); 
@@ -290,13 +291,16 @@ bool hart_t::run_basic_block()
   const Insn_t* i=insnp(bb+1);
 #ifdef DEBUG
   for (; i<insnp(bb+1)+bb->count-1; ++i) {
+    cursor = (cursor+1) % DEBUG_RING;
     debug[cursor].pc = s.pc;
     debug[cursor].insn = *i;
     if (execute_instruction(*i, &debug[cursor].result))
       die("unexpected branch!");
-    cursor = (cursor+1) % DEBUG_RING;
   }
   // last instruction
+  cursor = (cursor+1) % DEBUG_RING;
+  debug[cursor].pc = s.pc;
+  debug[cursor].insn = *i;
   if (execute_instruction(*i, &debug[cursor].result)) {
 #else
   for (; i<insnp(bb+1)+bb->count-1; ++i) {

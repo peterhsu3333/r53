@@ -26,13 +26,13 @@
 
 # RVC Compressed Instruction Set, Quadrant 0
    c.addi4spn	"000 {5:4|9:6|2|3}         c2 00"		c2.l			C		Ct,Cc,CK	"wrd(sp+imm)"
-   c.fld	"001 {5:3}    c1 {7:6}     c2 00"		c2.d,c1.l		C,F,ld		CD,Cl(Cs)	"wfd(f64(LOAD(double_t, r1+imm)))"
-   c.lw		"010 {5:3}    c1 {2|6}     c2 00"		c2.w,c1.l		C,ld		Ct,Cl(Cs)	"wrd(LOAD( int32_t, r1+imm))"
-   c.ld		"011 {5:3}    c1 {7:6}     c2 00"		c2.f,c1.l		64,C,ld		Ct,Cl(Cs)	"wrd(LOAD( int64_t, r1+imm))"
-   c.flw	"011 {5:3}    c1 {2|6}     c2 00"		c2.d,c1.l		32,C,F,ld	Ct,Cl(Cs)	"wfd(f32(LOAD(uint32_t, r1+imm)))"
-   c.fsd	"101 {5:3}    c1 {7:6}     c2 00"		-,c1.l,c2.d		C,D,st		CD,Cl(Cs)	"STORE(uint64_t, r1+imm, r2.v)"
+   c.fld	"001 {5:3}    c1 {7:6}    fc2 00"		fc2.d,c1.l		C,F,ld		CD,Cl(Cs)	"wfd(f64(LOAD(double_t, r1+imm)))"
+   c.lw		"010 {5:3}    c1 {2|6}     c2 00"		c2.w,c1.l		C,ld		Ct,Cl(Cs)	"wrd(    LOAD( int32_t, r1+imm))"
+   c.ld		"011 {5:3}    c1 {7:6}    fc2 00"		fc2.f,c1.l		64,C,ld		Ct,Cl(Cs)	"wrd(    LOAD( int64_t, r1+imm))"
+   c.flw	"011 {5:3}    c1 {2|6}     c2 00"		fc2.d,c1.l		32,C,F,ld	Ct,Cl(Cs)	"wfd(f32(LOAD(uint32_t, r1+imm)))"
+   c.fsd	"101 {5:3}    c1 {7:6}    fc2 00"		-,c1.l,fc2.d		C,D,st		CD,Cl(Cs)	"STORE(uint64_t, r1+imm, r2.v)"
    c.sw		"110 {5:3}    c1 {2|6}     c2 00"		-,c1.l,c2.w		C,st		Ct,Cl(Cs)	"STORE( int32_t, r1+imm, r2)"
-   c.sd		"111 {5:3}    c1 {7:6}     c2 00"		-,c1.l,c2.l		C,st		Ct,Cl(Cs)	"STORE( int64_t, 11+imm, r2)"
+   c.sd		"111 {5:3}    c1 {7:6}     c2 00"		-,c1.l,c2.l		64,C,st		Ct,Cl(Cs)	"STORE( int64_t, r1+imm, r2)"
 												                
 # RVC Compressed Instruction Set, Quadrant 1							                
    c.addi	"000 {-5}   rd   {4:0}        01"		rd.l,rd.l		C		d,Cj		"wrd(r1 + imm)"
@@ -56,20 +56,20 @@
 												                
 # RVC Compressed Instruction Set, Quadrant 2							                
    c.slli	"000 {5}    rd  {4:0}         10"		rd.l,rd.l		C		-		"wrd(r1 << imm)"
-   c.fldsp	"001 {5}    rd  {4:3|8:6}     10"		fd.d			C,D,ld		-		"wfd(f64(LOAD(uint64_t, sp+imm)))"
-   c.lwsp	"010 {5}    rd  {4:2|7:6}     10"		rd.w			64,C,ld		-		"wrd(LOAD( int32_t, sp+imm))"
-   c.flwsp	"011 {5}    rd  {4:2|7:6}     10"		fd.f			32,C,F,ld	-		"wfd(f32(LOAD(uint32_t, sp+imm)))"
-   c.ldsp	"011 {5}    rd  {4:3|8:6}     10"		rd.l			C,ld		-		"wrd(LOAD( int64_t, sp+imm))"
+   c.fldsp	"001 {5}    fd  {4:3|8:6}     10"		fd.d			C,D,ld		-		"wfd(f64(LOAD(uint64_t, sp+imm)))"
+   c.lwsp	"010 {5}    rd  {4:2|7:6}     10"		rd.w			64,C,ld		-		"wrd(    LOAD( int32_t, sp+imm))"
+   c.flwsp	"011 {5}    fd  {4:2|7:6}     10"		fd.f			32,C,F,ld	-		"wfd(f32(LOAD(uint32_t, sp+imm)))"
+   c.ldsp	"011 {5}    rd  {4:3|8:6}     10"		rd.l			C,ld		-		"wrd(LOAD(     int64_t, sp+imm))"
 #   c.ret	"100 0     00001        00000 10"		-			C,uj,>		-		"reg_jump(s.reg[1].l)"
    c.jr		"100 0      rd          00000 10"		-,rd.l			C,uj,>		-		"reg_jump(r1)"
    c.mv		"100 0      rd            cs2 10"		rd.l,cs2.l		C		-		"wrd(r1)"
    c.ebreak	"100 1     00000        00000 10"		-			C,ex		-		"ebreak()"
    c.jalr	"100 1      rd          00000 10"		-,rd.l			C,uj,>		-		"{ long npc=r1; wrd(s.pc+2); jump(npc); }"
    c.add	"100 1      rd            cs2 10"		rd.l,rd.l,cs2.l		C		-		"wrd(r1 + r2)"
-   c.fsdsp	"101 {5:3|8:6}            cs2 10"		-,cs2.d			C,D,st		-		"STORE(uint64_t, sp+imm, r1.v)"
-   c.swsp	"110 {5:2|7:6}            cs2 10"		-,cs2.w			C,st		-		"STORE(int32_t,  sp+imm, r1)"
-   c.sdsp	"111 {5:3|8:6}            cs2 10"		-,cs2.l			64,C,st		-		"STORE(int64_t,  sp+imm, r1)"
-   c.fswsp	"111 {5:2|7:6}            cs2 10"		-,cs2.f			32,C,F,st	-		"STORE(uint32_t, sp+imm, r1.v)"
+   c.fsdsp	"101 {5:3|8:6}           fcs2 10"		-,-,cs2.d		C,D,st		-		"STORE(uint64_t, sp+imm, r2.v)"
+   c.swsp	"110 {5:2|7:6}            cs2 10"		-,-,fcs2.w		C,st		-		"STORE(int32_t,  sp+imm, r2)"
+   c.sdsp	"111 {5:3|8:6}            cs2 10"		-,-,cs2.l		64,C,st		-		"STORE(int64_t,  sp+imm, r2)"
+   c.fswsp	"111 {5:2|7:6}           fcs2 10"		-,-,fcs2.f		32,C,F,st	-		"STORE(uint32_t, sp+imm, r2.v)"
 
 
 #  Opcode	Instruction Bits				Registers		Flags		Assembler	Action

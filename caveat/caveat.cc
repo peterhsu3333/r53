@@ -127,11 +127,14 @@ int main(int argc, const char* argv[], const char* envp[])
     sigaction(SIGINT,  &action, NULL);
     if (setjmp(return_to_top_level) != 0) {
       fprintf(stderr, "SIGSEGV signal was caught\n");
+      fprintf(stderr, "%ld instructions executed, pc=0x%lx\n", mycpu->executed(), mycpu->s.pc);
+      if (conf_show())
+	exit(0);
 #ifdef DEBUG
       int now = mycpu->executed() % DEBUG_RING;
       int k = now;
       do {
-	k = (k-1+DEBUG_RING) % DEBUG_RING;
+	k = (k+1) % DEBUG_RING;
 	//fprintf(out, "[%d] ", gettid());
 	Insn_t* i = &mycpu->debug[k].insn;
 	reg_t data = mycpu->debug[k].result.data;
