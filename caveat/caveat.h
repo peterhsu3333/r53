@@ -111,8 +111,8 @@ union reg_t {
   uint64_t raw;			// internal boxed floating point view
   float64_t d;			// double precision FP view
   float32_t f;			// single precision FP view
-  uint64_t operator=(xlen_t    e) {  l=e; return raw; }
-  uint64_t operator=(uxlen_t   e) { ul=e; return raw; } 
+  uint64_t operator=(int64_t   e) {  l=e; return raw; }
+  uint64_t operator=(uint64_t  e) { ul=e; return raw; } 
   uint64_t operator=(int32_t   e) {  l=e; return raw; }
   uint64_t operator=(uint32_t  e) { ul=e; return raw; }
   uint64_t operator=(float32_t e) { raw=e.v | 0xffffffff00000000L; return raw; }

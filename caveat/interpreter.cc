@@ -22,11 +22,21 @@ bool hart_t::execute_instruction(Insn_t insn, Result_t* ap)
   uxlen_t tmp;
   _executed++;
   s.reg[0].l = 0;
+
+#if 1
+  fprintf(stderr, "%lx ", s.pc);
+  //#define do_return(jumped) fprintf(stderr, "%lx\n", insn.rd()==NOREG?s.reg[insn.rs2()].ul:s.reg[insn.rd()].ul); return (jumped);
+#define do_return(jumped) fprintf(stderr, "%lx\n", insn.rd()==NOREG?s.reg[0].ul:s.reg[insn.rd()].ul); return (jumped);
+#else
+#define do_return(jumped) return (jumped);
+#endif
+  
 #if 0
-  //fprintf(stderr, "%lx ", s.pc);
   labelpc(s.pc);
   disasm(s.pc, &insn);
 #endif
+
+  
   /*
     Abbreviations to keep isa.def semantics short
   */
@@ -56,9 +66,6 @@ bool hart_t::execute_instruction(Insn_t insn, Result_t* ap)
       
     //#define ebreak() return true
 #define ebreak() kill(tid(), SIGTRAP)
-
-#define do_return(jumped) return (jumped);
-  //#define do_return(jumped) fprintf(stderr, "%lx\n", s.reg[insn.rd()].ul); return (jumped);
 
 #define branch(test, taken, fall)  { s.pc=(test)?(taken):(fall); do_return(test); }
 #define jump(npc)  { s.pc=(npc); do_return(true); }

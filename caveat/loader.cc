@@ -365,6 +365,11 @@ static long initialize_stack(int argc, const char** argv, const char** envp, pin
   // align stack
   stack_top &= -16;
   uintptr_t at_random = stack_top;
+  
+  //
+  //****************HACK!!!
+  stack_top -= 0x28;
+  //
 
 #define PUSH_ARG(value) do {				\
     stack_top -= sizeof(uintptr_t);			\
