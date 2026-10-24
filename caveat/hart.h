@@ -5,8 +5,12 @@
 extern option<> conf_gdb;
 extern option<bool> conf_show;
 
+
+#define DEBUG_RING  32
+
+
 struct processor_state_t {
-  xlen_t pc;			// program counter
+  Addr_t pc;			// program counter
   reg_t reg[SCALAR_REGS];	// all scalar registers
   uint16_t fflags;		// floating point status flags
   uint16_t frm;			// floating point rounding mode
@@ -51,6 +55,13 @@ struct insn_t {
 #define FSR_NXA  (FPEXC_NX << FSR_AEXC_SHIFT)
 #define FSR_AEXC (FSR_NVA | FSR_OFA | FSR_UFA | FSR_DZA | FSR_NXA)
 
+
+struct Debug_t {
+  Insn_t insn;
+  Result_t result;
+  Addr_t pc;
+};
+
 class hart_t {
   static int _num_harts;	// how many have been cloned
   static hart_t* _list;		// for find() using thread id
@@ -85,22 +96,17 @@ public:
   syscallfunc_t riscv_syscall;	// function pointer for system calls
 
 #ifdef DEBUG
-  struct {
-    Insn_t insn;
-    Result_t result;
-    uintptr_t pc;
-  } debug[DEBUG_RING];
+  Debug_t debug[DEBUG_RING];
 #endif
   
   hart_t(int argc, const char* argv[], const char* envp[]);
   hart_t(hart_t* p);
   ~hart_t();
 
-  Header_t* find_bb(xlen_t pc);
+  Header_t* find_bb(Addr_t pc);
   bool run_basic_block();
   bool execute_instruction(Insn_t insn, Result_t* ap);
   
-  void print(uintptr_t pc, Insn_t* i, FILE* out =stderr);
   long executed() { return _executed; }
   void count_insn(int n =1) { _executed += n; }
   long flushed() { return tcache.flushed(); }

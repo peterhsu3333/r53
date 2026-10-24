@@ -30,7 +30,7 @@ uintptr_t gdb_text, gdb_data, gdb_bss;
 
 static int lastGdbSignal = 0;
 static hart_t* gdb_cpu;
-static xlen_t* gdb_pc;
+static Addr_t* gdb_pc;
 static reg_t* gdb_reg;
 
 //long gdbNumContinue = -1;	/* program started by 'c' */

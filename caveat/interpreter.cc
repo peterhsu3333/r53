@@ -37,8 +37,8 @@ bool hart_t::execute_instruction(Insn_t insn, Result_t* ap)
   uintptr_t tmp;
   _executed++;
   s.reg[0].l = 0;
-  fprintf(stderr, "%lx ", s.pc);
 #if 0
+  //fprintf(stderr, "%lx ", s.pc);
   labelpc(s.pc);
   disasm(s.pc, &insn);
 #endif
@@ -72,9 +72,8 @@ bool hart_t::execute_instruction(Insn_t insn, Result_t* ap)
     //#define ebreak() return true
 #define ebreak() kill(tid(), SIGTRAP)
 
-  //#define do_return(jumped) fprintf(stderr, "%lx\n", s.reg[insn.rd()].x); return (jumped);
-  //#define do_return(jumped) return (jumped);
-#define do_return(jumped) fprintf(stderr, "%lx\n", s.reg[insn.rd()].ul); return (jumped);
+#define do_return(jumped) return (jumped);
+  //#define do_return(jumped) fprintf(stderr, "%lx\n", s.reg[insn.rd()].ul); return (jumped);
 
 #define branch(test, taken, fall)  { s.pc=(test)?(taken):(fall); do_return(test); }
 #define jump(npc)  { s.pc=(npc); do_return(true); }

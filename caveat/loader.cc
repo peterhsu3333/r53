@@ -460,7 +460,7 @@ static long initialize_stack(int argc, const char** argv, const char** envp, pin
   return stack_top;
 }
 
-long emulate_execve(const char* filename, int argc, const char* argv[], const char* envp[], xlen_t& pc)
+long emulate_execve(const char* filename, int argc, const char* argv[], const char* envp[], Addr_t& pc)
 {
   pc = load_elf_binary(argv[0]);
   //dbmsg("interp.base=%lx", at_base);
@@ -485,7 +485,7 @@ int elf_find_symbol(const char* name, long* begin, long* end)
 }
 
 
-const char* elf_find_pc(long pc, long* offset)
+const char* elf_find_pc(Addr_t pc, long* offset)
 {
   if (symtbl) {
     for (int i=0; i<num_syms; i++) {

@@ -15,14 +15,14 @@
 
 std::map<long, std::string> fname; // dictionary of pc->name
 
-const char* func_name(uintptr_t pc)
+const char* func_name(Addr_t pc)
 {
   return fname.count(pc)==1 ? const_cast<const char*>(fname.at(pc).c_str()) : "NOT FOUND";
 }
 
 #define LABEL_WIDTH  16
 #define OFFSET_WIDTH  8
-int slabelpc(char* buf, uintptr_t pc)
+int slabelpc(char* buf, Addr_t pc)
 {
   auto it = fname.upper_bound(pc);
   if (it == fname.end()) {
@@ -41,14 +41,14 @@ int slabelpc(char* buf, uintptr_t pc)
   }
 }
 
-void labelpc(uintptr_t pc, FILE* f)
+void labelpc(Addr_t pc, FILE* f)
 {
   char buffer[1024];
   slabelpc(buffer, pc);
   fprintf(f, "%s", buffer);
 }
 
-int sdisasm(char* buf, uintptr_t pc, const Insn_t* i)
+int sdisasm(char* buf, Addr_t pc, const Insn_t* i)
 {
   int n = 0;
   if (i->opcode() == Op_ZERO) {
@@ -79,7 +79,7 @@ int sdisasm(char* buf, uintptr_t pc, const Insn_t* i)
   return n;
 }
 
-void disasm(uintptr_t pc, const Insn_t* i, const char* end, FILE* f)
+void disasm(Addr_t pc, const Insn_t* i, const char* end, FILE* f)
 {
   char buffer[1024];
   sdisasm(buffer, pc, i);
@@ -88,7 +88,7 @@ void disasm(uintptr_t pc, const Insn_t* i, const char* end, FILE* f)
 
 
 
-int sprtinsn(char* buf, uintptr_t pc, const Insn_t* i, Result_t result)
+int sprtinsn(char* buf, Addr_t pc, const Insn_t* i, Result_t result)
 {
   int n = 0;
   if (i->rd() == NOREG) {
@@ -106,11 +106,11 @@ int sprtinsn(char* buf, uintptr_t pc, const Insn_t* i, Result_t result)
   n += slabelpc(buf+n, pc);
   n += sdisasm(buf+n, pc, i);
   if (ATTR[i->opcode()] & (ATTR_ld|ATTR_st|ATTR_rmw))
-    n += sprintf(buf+n, ",vaddr[%016lx] ", result.addr);
+    n += sprintf(buf+n, ",vaddr[0x%8lx] ", result.addr);
   return n;
 }
 
-void prtinsn(uintptr_t pc, const Insn_t* i, Result_t result, const char* end, FILE* f)
+void prtinsn(Addr_t pc, const Insn_t* i, Result_t result, const char* end, FILE* f)
 {
   char buffer[1024];
   sprtinsn(buffer, pc, i, result);

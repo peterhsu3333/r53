@@ -238,7 +238,7 @@ for opcode in insns:
                 lo = int(lo) if colon else hi
                 if lo > hi:
                     die('Bad bit positions', t, 'in', bitpat)
-                if hi >= 12:
+                if hi >= 15:
                     longimm = True
                 shamt = '<<{:d}'.format(lo) if lo > 0 else ''
                 immed.append('({:s}({:d},{:d}){:s})'.format(extractor, pos, hi-lo+1, shamt))

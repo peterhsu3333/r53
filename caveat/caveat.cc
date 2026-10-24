@@ -134,8 +134,9 @@ int main(int argc, const char* argv[], const char* envp[])
       int now = mycpu->executed() % DEBUG_RING;
       int k = now;
       do {
+	Debug_t* d = &mycpu->debug[k];
+	prtinsn(d->pc, &d->insn, d->result);
 	k = (k+1) % DEBUG_RING;
-	prtinsn(mycpu->s.pc, &mycpu->debug[k].insn, mycpu->debug[k].result);
       } while (k != now);
 #endif
       exit(0);
@@ -149,9 +150,9 @@ int main(int argc, const char* argv[], const char* envp[])
     while (1) {
       Insn_t insn = decoder(mycpu->s.pc);
       Result_t result;
-      xlen_t oldpc = mycpu->s.pc;
+      Addr_t oldpc = mycpu->s.pc;
       mycpu->execute_instruction(insn, &result);
-      mycpu->print(oldpc, &insn, stderr);
+      prtinsn(oldpc, &insn, result);
     }
   }
   else {

@@ -26,7 +26,7 @@ option<bool>	conf_calls ("calls",	false, true,		"Show function calls and returns
 
 
 // in loader.cc
-long emulate_execve(const char* filename, int argc, const char* argv[], const char* envp[], xlen_t& pc);
+long emulate_execve(const char* filename, int argc, const char* argv[], const char* envp[], Addr_t& pc);
 
 hart_t* hart_t::_list =0;
 int hart_t::_num_harts =0;
@@ -80,7 +80,7 @@ hart_t::hart_t(int argc, const char* argv[], const char* envp[])
   }
   
   memset(&s, 0, sizeof(processor_state_t));
-  uintptr_t stack_pointer = emulate_execve(argv[0], argc, argv, envp, s.pc);
+  Addr_t stack_pointer = emulate_execve(argv[0], argc, argv, envp, s.pc);
   s.reg[2].l = stack_pointer;
   _tid = gettid();
   ptnum = pthread_self();
@@ -105,27 +105,6 @@ hart_t::hart_t(hart_t* from)
 hart_t::~hart_t()
 {
 }
-
-void hart_t::print(uintptr_t pc, Insn_t* i, FILE* out)
-{
-  //fprintf(out, "[%d] ", gettid());
-  fprintf(out, "%11ld ", executed());
-  if (i->rd() == NOREG) {
-    if (ATTR[i->opcode()] & ATTR_st)
-      fprintf(out, "%4s[%016lx] ", reg_name[i->rs2()], s.reg[i->rs2()].ul); 
-    else if ((ATTR[i->opcode()] & (ATTR_cj|ATTR_uj)) && (i->rs1() != NOREG))
-      fprintf(out, "%4s[%016lx] ", reg_name[i->rs1()], s.reg[i->rs1()].ul); 
-    else if (ATTR[i->opcode()] & ATTR_ex)
-      fprintf(out, "%4s[%016lx] ", reg_name[10], s.reg[10].ul);
-    else
-      fprintf(out, "%4s[%16s] ", "", "");
-  }
-  else
-    fprintf(out, "%4s[%016lx] ", reg_name[i->rd()], s.reg[i->rd()].ul);
-  labelpc(pc, out);
-  disasm(pc, i, "\n", out);
-}
-
 
 
 
@@ -221,18 +200,18 @@ void Tcache_t::clear() {
 
 
 
-void substitute_cas(uintptr_t pc, Insn_t* i3);
+void substitute_cas(Addr_t pc, Insn_t* i3);
 long proxy_syscall(long rvnum, long a0, long a1, long a2, long a3, long a4, long a5, hart_t* me);
 
 /*
  * Find basic block starting at pc in tcache, pre-decoding instructions as needed.
  */
-Header_t* hart_t::find_bb(xlen_t pc)
+Header_t* hart_t::find_bb(Addr_t pc)
 {
   Header_t* bb = tcache.find(pc);
   if (bb)
     return bb;
-  uintptr_t dpc = pc;	// decode pc
+  Addr_t dpc = pc;	// decode pc
   Insn_t buffer[140];
   Header_t* wbb = (Header_t*)buffer;
   Insn_t* j = (Insn_t*)(wbb+1) - 1; // note pre-incremented in loop
@@ -287,23 +266,22 @@ bool hart_t::run_basic_block()
   //
   // execute basic block except last instruction
   //
-  int cursor = executed() % DEBUG_RING;
   const Insn_t* i=insnp(bb+1);
-#ifdef DEBUG
+  Debug_t* d;
   for (; i<insnp(bb+1)+bb->count-1; ++i) {
-    cursor = (cursor+1) % DEBUG_RING;
-    debug[cursor].pc = s.pc;
-    debug[cursor].insn = *i;
-    if (execute_instruction(*i, &debug[cursor].result))
+#ifdef DEBUG
+    d = &debug[executed() % DEBUG_RING];
+    d->pc = s.pc;
+    d->insn = *i;
+    if (execute_instruction(*i, &d->result))
       die("unexpected branch!");
   }
   // last instruction
-  cursor = (cursor+1) % DEBUG_RING;
-  debug[cursor].pc = s.pc;
-  debug[cursor].insn = *i;
-  if (execute_instruction(*i, &debug[cursor].result)) {
+  d = &debug[executed() % DEBUG_RING];
+  d->pc = s.pc;
+  d->insn = *i;
+  if (execute_instruction(*i, &d->result)) {
 #else
-  for (; i<insnp(bb+1)+bb->count-1; ++i) {
     if (execute_instruction(*i, &dummy))
       die("unexpected branch!");
   }
@@ -334,7 +312,7 @@ long default_riscv_syscall(hart_t* h, long a0)
 }
 
   
-void substitute_cas(uintptr_t pc, Insn_t* i3)
+void substitute_cas(Addr_t pc, Insn_t* i3)
 {
   //dbmsg("substitute_cas pc=%lx\n", pc);
   dieif(i3->opcode()!=Op_sc_w && i3->opcode()!=Op_sc_d, "0x%lx no SC found in substitute_cas()", pc);
