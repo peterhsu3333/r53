@@ -88,6 +88,37 @@ void disasm(uintptr_t pc, const Insn_t* i, const char* end, FILE* f)
 
 
 
+int sprtinsn(char* buf, uintptr_t pc, const Insn_t* i, Result_t result)
+{
+  int n = 0;
+  if (i->rd() == NOREG) {
+    if (ATTR[i->opcode()] & ATTR_st)
+      n += sprintf(buf+n, "%4s[%016lx] ", reg_name[i->rs2()], result.data.ul); 
+    else if ((ATTR[i->opcode()] & (ATTR_cj|ATTR_uj)) && (i->rs1() != NOREG))
+      n += sprintf(buf+n, "%4s[%016lx] ", reg_name[i->rs1()], result.data.ul); 
+    else if (ATTR[i->opcode()] & ATTR_ex)
+      n += sprintf(buf+n, "%4s[%016lx] ", reg_name[10], result.data.ul);
+    else
+      n += sprintf(buf+n, "%4s[%16s] ", "", "");
+  }
+  else
+    fprintf(stderr, "%4s[%016lx] ", reg_name[i->rd()], result.data.ul);
+  n += slabelpc(buf+n, pc);
+  n += sdisasm(buf+n, pc, i);
+  if (ATTR[i->opcode()] & (ATTR_ld|ATTR_st|ATTR_rmw))
+    n += sprintf(buf+n, ",vaddr[%016lx] ", result.addr);
+  return n;
+}
+
+void prtinsn(uintptr_t pc, const Insn_t* i, Result_t result, const char* end, FILE* f)
+{
+  char buffer[1024];
+  sprtinsn(buffer, pc, i, result);
+  fprintf(f, "%s%s", buffer, end);
+}
+
+
+
 #include "constants.h"
 
 

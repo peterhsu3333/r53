@@ -14,10 +14,10 @@ nothing:
 	echo "clean, tarball, install?"
 
 install:
-	make -C softfloat install
+	make -C softfloat -j 16 install
 	make -C opcodes   install
 	make -C caveat    install
-	make -C pipesim   install
+#	make -C pipesim   install
 
 clean:
 	rm -f $(CAVA)/lib/libcava.a *~ ./#*#

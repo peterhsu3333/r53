@@ -257,6 +257,17 @@ for opcode in insns:
             imm_extractors[immed] = n
         immed = 'ix{:d}(b)'.format(imm_extractors[immed])
 
+    # Check consistency of register fields
+    for r in insns[opcode].reglist:
+        if r == '-':
+            continue
+        name, typ = r.split('.')
+        if name.isnumeric() or name in operands:
+            continue
+        print('register field', name, 'does not appear in register list')
+        print(insns[opcode].original)
+        exit(-1)
+
     insns[opcode].operands = operands
     insns[opcode].length   = int(pos / 8)
     insns[opcode].immed    = immed
@@ -459,10 +470,13 @@ Insn_t decoder(uintptr_t pc)
                     print(opcode, i.reglist)
                     die("Bad register list format")
                 name, typ = tuple
-                if name not in fields:
+                if name.isnumeric():
+                    regs.append(name)
+                elif name in fields:
+                    regs.append(name+'(b)')
+                else:
                     print(opcode, i.reglist)
                     die("Undefined register name", name)
-                regs.append(name+'(b)')
             else:
                 regs.append('0')
         opname = 'Op_' + opcode.replace('.','_')
@@ -493,20 +507,28 @@ with open('newcode.tmp', 'w') as f:
         #
         # change register specifiers to refer to actual register with type
         #
+        # print(i.original.strip())
+        # print('---:', i.action)
         action = i.action
         action = action.replace('f32', 'XXXXXXX') # hack to preserve f32
         for k in range(len(i.reglist)):
             if i.reglist[k] == '-':
                 continue
             name, typ = i.reglist[k].split('.')
-            if name not in fields:
-                print(i.lineno, i.line)
+            if name.isnumeric():
+                action = re.sub(r'[rf]{:d}'.format(k), 's.reg[{:s}].{:s}'.format(name, typ), action)
+            elif name in fields:
+                action = re.sub(r'[rf]{:d}'.format(k), 's.reg[insn.rs{:d}()].{:s}'.format(k, typ), action)
+            else:
+                # print(i.lineno, i.original)
                 die('Unknown field', name)
-            action = action.replace('r{:d}'.format(k), 's.reg[insn.rs{:d}()].{:s}'.format(k, typ))
-            action = action.replace('f{:d}'.format(k), 's.reg[insn.rs{:d}()].{:s}'.format(k, typ))
+            # print('--->', action)
         action = action.replace('XXXXXXX', 'f32') # hack put back f32
+        statement = '    case {:20s} {:s}; s.pc+={:d}; break;'.format(opname+':', action, i.length)
         f.write('#line {:d} "{:s}"\n'.format(i.lineno, isa_file_name))
-        f.write('    case {:20s} {:s}; s.pc+={:d}; break;\n'.format(opname+':', action, i.length))
+        f.write(statement+'\n')
+        # print('===>', statement)
+
 diffcp('../caveat/semantics.h')
 
 exit(0)

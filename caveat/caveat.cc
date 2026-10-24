@@ -135,23 +135,7 @@ int main(int argc, const char* argv[], const char* envp[])
       int k = now;
       do {
 	k = (k+1) % DEBUG_RING;
-	//fprintf(out, "[%d] ", gettid());
-	Insn_t* i = &mycpu->debug[k].insn;
-	reg_t data = mycpu->debug[k].result.data;
-	if (i->rd() == NOREG) {
-	  if (ATTR[i->opcode()] & ATTR_st)
-	    fprintf(stderr, "%4s[%016lx] ", reg_name[i->rs2()], data.ul); 
-	  else if ((ATTR[i->opcode()] & (ATTR_cj|ATTR_uj)) && (i->rs1() != NOREG))
-	    fprintf(stderr, "%4s[%016lx] ", reg_name[i->rs1()], data.ul); 
-	  else if (ATTR[i->opcode()] & ATTR_ex)
-	    fprintf(stderr, "%4s[%016lx] ", reg_name[10], data.ul);
-	  else
-	    fprintf(stderr, "%4s[%16s] ", "", "");
-	}
-	else
-	  fprintf(stderr, "%4s[%016lx] ", reg_name[i->rd()], data.ul);
-	labelpc(mycpu->debug[k].pc, stderr);
-	disasm(mycpu->s.pc, i, "\n", stderr);
+	prtinsn(mycpu->s.pc, &mycpu->debug[k].insn, mycpu->debug[k].result);
       } while (k != now);
 #endif
       exit(0);

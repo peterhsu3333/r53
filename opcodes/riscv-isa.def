@@ -25,11 +25,11 @@
 #  Opcode	Instruction Bits				Registers		Flags		Assembler	Action
 
 # RVC Compressed Instruction Set, Quadrant 0
-   c.addi4spn	"000 {5:4|9:6|2|3}         c2 00"		c2.l			C		Ct,Cc,CK	"wrd(sp+imm)"
+   c.addi4spn	"000 {5:4|9:6|2|3}         c2 00"		c2.l,2.l		C		Ct,Cc,CK	"wrd(r1+imm)"
    c.fld	"001 {5:3}    c1 {7:6}    fc2 00"		fc2.d,c1.l		C,F,ld		CD,Cl(Cs)	"wfd(f64(LOAD(double_t, r1+imm)))"
    c.lw		"010 {5:3}    c1 {2|6}     c2 00"		c2.w,c1.l		C,ld		Ct,Cl(Cs)	"wrd(    LOAD( int32_t, r1+imm))"
-   c.ld		"011 {5:3}    c1 {7:6}    fc2 00"		fc2.f,c1.l		64,C,ld		Ct,Cl(Cs)	"wrd(    LOAD( int64_t, r1+imm))"
-   c.flw	"011 {5:3}    c1 {2|6}     c2 00"		fc2.d,c1.l		32,C,F,ld	Ct,Cl(Cs)	"wfd(f32(LOAD(uint32_t, r1+imm)))"
+   c.ld		"011 {5:3}    c1 {7:6}     c2 00"		c2.f,c1.l		64,C,ld		Ct,Cl(Cs)	"wrd(    LOAD( int64_t, r1+imm))"
+   c.flw	"011 {5:3}    c1 {2|6}    fc2 00"		fc2.d,c1.l		32,C,F,ld	Ct,Cl(Cs)	"wfd(f32(LOAD(uint32_t, r1+imm)))"
    c.fsd	"101 {5:3}    c1 {7:6}    fc2 00"		-,c1.l,fc2.d		C,D,st		CD,Cl(Cs)	"STORE(uint64_t, r1+imm, r2.v)"
    c.sw		"110 {5:3}    c1 {2|6}     c2 00"		-,c1.l,c2.w		C,st		Ct,Cl(Cs)	"STORE( int32_t, r1+imm, r2)"
    c.sd		"111 {5:3}    c1 {7:6}     c2 00"		-,c1.l,c2.l		64,C,st		Ct,Cl(Cs)	"STORE( int64_t, r1+imm, r2)"
@@ -37,9 +37,9 @@
 # RVC Compressed Instruction Set, Quadrant 1							                
    c.addi	"000 {-5}   rd   {4:0}        01"		rd.l,rd.l		C		d,Cj		"wrd(r1 + imm)"
    c.addiw	"001 {-5}   rd   {4:0}        01"		rd.w,rd.w		64,C		d,Cj		"wrd(int32_t(r1) + int32_t(imm))"
-   c.jal	"001 {-11|4|9:8|10|6|7|3:1|5} 01"		-			32,C,uj,>	d,Ca		"{ wreg(1, s.pc+2); jump(s.pc+imm) }"
+   c.jal	"001 {-11|4|9:8|10|6|7|3:1|5} 01"		1.l			32,C,uj,>	d,Ca		"wrd(s.pc+2); jump(s.pc+imm)"
    c.li		"010 {-5}   rd   {4:0}        01"		rd.l			C		d,Ci		"wrd(imm)"
-   c.addi16sp	"011 {-9}  00010 {4|6|8:7|5}  01"		-			C		-		"wreg(2, sp+imm)"
+   c.addi16sp	"011 {-9}  00010 {4|6|8:7|5}  01"		2.l,2.l			C		-		"wrd(r1+imm)"
    c.lui	"011 {-17}  rd   {16:12}      01"		rd.l			C		d,Cu		"wrd(imm)"
    c.srli	"100 {5}   00 c1 {4:0}        01"		c1.l,c1.l		C		Cs,Cs		"wrd(r1 >> imm)"
    c.srai	"100 {5}   01 c1 {4:0}        01"		c1.l,c1.l		C		Cs,Cs		"wrd(r1 >> imm)"
@@ -50,26 +50,26 @@
    c.and	"100 0     11 c1   11      c2 01"		c1.l,c1.l,c2.l		C		-		"wrd(r1 & r2)"
    c.subw	"100 1     11 c1   00      c2 01"		c1.w,c1.w,c2.w		C		-		"wrd(r1 - r2)"
    c.addw	"100 1     11 c1   01      c2 01"		c1.w,c1.w,c2.w		C		-		"wrd(r1 + r2)"
-   c.j		"101 {-11|4|9:8|10|6|7|3:1|5} 01"		c1.w,c1.w,c2.w		C,uj,>		-		"jump(s.pc+imm)"
+   c.j		"101 {-11|4|9:8|10|6|7|3:1|5} 01"		-			C,uj,>		-		"jump(s.pc+imm)"
    c.beqz	"110 {-8|4:3} c1 {7:6|2:1|5}  01"		-,c1.l			C,cj,>		-		"branch(r1==0, s.pc+imm, s.pc+2)"
    c.bnez	"111 {-8|4:3} c1 {7:6|2:1|5}  01"		-,c1.l			C,cj,>		-		"branch(r1!=0, s.pc+imm, s.pc+2)"
 												                
 # RVC Compressed Instruction Set, Quadrant 2							                
    c.slli	"000 {5}    rd  {4:0}         10"		rd.l,rd.l		C		-		"wrd(r1 << imm)"
-   c.fldsp	"001 {5}    fd  {4:3|8:6}     10"		fd.d			C,D,ld		-		"wfd(f64(LOAD(uint64_t, sp+imm)))"
-   c.lwsp	"010 {5}    rd  {4:2|7:6}     10"		rd.w			64,C,ld		-		"wrd(    LOAD( int32_t, sp+imm))"
-   c.flwsp	"011 {5}    fd  {4:2|7:6}     10"		fd.f			32,C,F,ld	-		"wfd(f32(LOAD(uint32_t, sp+imm)))"
-   c.ldsp	"011 {5}    rd  {4:3|8:6}     10"		rd.l			C,ld		-		"wrd(LOAD(     int64_t, sp+imm))"
+   c.fldsp	"001 {5}    fd  {4:3|8:6}     10"		fd.d,2.l		C,D,ld		-		"wfd(f64(LOAD(uint64_t, r1+imm)))"
+   c.lwsp	"010 {5}    rd  {4:2|7:6}     10"		rd.w,2.l		64,C,ld		-		"wrd(    LOAD( int32_t, r1+imm))"
+   c.flwsp	"011 {5}    fd  {4:2|7:6}     10"		fd.f,2.l		32,C,F,ld	-		"wfd(f32(LOAD(uint32_t, r1+imm)))"
+   c.ldsp	"011 {5}    rd  {4:3|8:6}     10"		rd.l,2.l		C,ld		-		"wrd(LOAD(     int64_t, r1+imm))"
 #   c.ret	"100 0     00001        00000 10"		-			C,uj,>		-		"reg_jump(s.reg[1].l)"
    c.jr		"100 0      rd          00000 10"		-,rd.l			C,uj,>		-		"reg_jump(r1)"
    c.mv		"100 0      rd            cs2 10"		rd.l,cs2.l		C		-		"wrd(r1)"
    c.ebreak	"100 1     00000        00000 10"		-			C,ex		-		"ebreak()"
    c.jalr	"100 1      rd          00000 10"		-,rd.l			C,uj,>		-		"{ long npc=r1; wrd(s.pc+2); jump(npc); }"
    c.add	"100 1      rd            cs2 10"		rd.l,rd.l,cs2.l		C		-		"wrd(r1 + r2)"
-   c.fsdsp	"101 {5:3|8:6}           fcs2 10"		-,-,cs2.d		C,D,st		-		"STORE(uint64_t, sp+imm, r2.v)"
-   c.swsp	"110 {5:2|7:6}            cs2 10"		-,-,fcs2.w		C,st		-		"STORE(int32_t,  sp+imm, r2)"
-   c.sdsp	"111 {5:3|8:6}            cs2 10"		-,-,cs2.l		64,C,st		-		"STORE(int64_t,  sp+imm, r2)"
-   c.fswsp	"111 {5:2|7:6}           fcs2 10"		-,-,fcs2.f		32,C,F,st	-		"STORE(uint32_t, sp+imm, r2.v)"
+   c.fsdsp	"101 {5:3|8:6}           fcs2 10"		-,2.l,fcs2.d		C,D,st		-		"STORE(uint64_t, r1+imm, r2.v)"
+   c.swsp	"110 {5:2|7:6}            cs2 10"		-,2.l,cs2.w		C,st		-		"STORE(int32_t,  r1+imm, r2)"
+   c.sdsp	"111 {5:3|8:6}            cs2 10"		-,2.l,cs2.l		64,C,st		-		"STORE(int64_t,  r1+imm, r2)"
+   c.fswsp	"111 {5:2|7:6}           fcs2 10"		-,2.l,fcs2.f		32,C,F,st	-		"STORE(uint32_t, r1+imm, r2.v)"
 
 
 #  Opcode	Instruction Bits				Registers		Flags		Assembler	Action
@@ -123,15 +123,15 @@
 
    fence	"{11:0}          rs1 000    rd    00011 11"	rd.l,rs1.l		<,I,ex,>	d,s,j		"fence(imm)"
    fence.i	"{11:0}          rs1 001    rd    00011 11"	rd.l,rs1.l		<,I,ex,>	d,s,j		"fence_i(imm)"
-   ecall	"000000000000  00000 000  00000   11100 11"	-			<,I,ex,>	-		"wreg(10, riscv_syscall(this, rreg(10)))"
+   ecall	"000000000000  00000 000  00000   11100 11"	10.l,10.l		<,I,ex,>	-		"wrd(riscv_syscall(this, r1))"
    ebreak	"000000000001  00000 000  00000   11100 11"	-			I,ex		-		"ebreak()"
 
    csrrw	"{11:0}          rs1 001    rd    11100 11"	rd.l,rs1.l		<,I,sr,>	d,E,s		"wrd(csr_func(imm,       [&](uxlen_t old) { return        r1;        } ))"
    csrrs	"{11:0}          rs1 010    rd    11100 11"	rd.l,rs1.l		<,I,sr,>	d,E,s		"wrd(csr_func(imm,       [&](uxlen_t old) { return old |  r1;        } ))"
    csrrc	"{11:0}          rs1 011    rd    11100 11"	rd.l,rs1.l		<,I,sr,>	d,E,s		"wrd(csr_func(imm,       [&](uxlen_t old) { return old & ~r1;        } ))"
-   csrrwi	"{11:0}      {16:12} 101    rd    11100 11"	rd.l,rs1.l		<,I,sr,>	d,E,Z		"wrd(csr_func(imm&0xFFF, [&](uxlen_t old) { return        (uimm>>12); } ))"
-   csrrsi	"{11:0}      {16:12} 110    rd    11100 11"	rd.l,rs1.l		<,I,sr,>	d,E,Z		"wrd(csr_func(imm&0xFFF, [&](uxlen_t old) { return old |  (uimm>>12); } ))"
-   csrrci	"{11:0}      {16:12} 111    rd    11100 11"	rd.l,rs1.l		<,I,sr,>	d,E,Z		"wrd(csr_func(imm&0xFFF, [&](uxlen_t old) { return old & ~(uimm>>12); } ))"
+   csrrwi	"{11:0}      {16:12} 101    rd    11100 11"	rd.l			<,I,sr,>	d,E,Z		"wrd(csr_func(imm&0xFFF, [&](uxlen_t old) { return        (uimm>>12); } ))"
+   csrrsi	"{11:0}      {16:12} 110    rd    11100 11"	rd.l			<,I,sr,>	d,E,Z		"wrd(csr_func(imm&0xFFF, [&](uxlen_t old) { return old |  (uimm>>12); } ))"
+   csrrci	"{11:0}      {16:12} 111    rd    11100 11"	rd.l			<,I,sr,>	d,E,Z		"wrd(csr_func(imm&0xFFF, [&](uxlen_t old) { return old & ~(uimm>>12); } ))"
 
 
 # RV64I Base Instruction Set (in addition to RV32I)
@@ -216,31 +216,31 @@
    fsub.s	"00001 00    fs2 fs1 {2:0}  fd    10100 11"	fd.f,fs1.f,fs2.f	F,fp		D,S,T,m		"srm; wfd(f32_sub(f1, f2)); sfx"
    fmul.s	"00010 00    fs2 fs1 {2:0}  fd    10100 11"	fd.f,fs1.f,fs2.f	F,fp		D,S,T,m		"srm; wfd(f32_mul(f1, f2)); sfx"
    fdiv.s	"00011 00    fs2 fs1 {2:0}  fd    10100 11"	fd.f,fs1.f,fs2.f	F,fp		D,S,T,m		"srm; wfd(f32_div(f1, f2)); sfx"
-   fsqrt.s	"01011 00  00000 rs1 {2:0}  fd    10100 11"	fd.f,fs1.f,fs2.f	F,fp		D,S,m		"srm; wfd(f32_sqrt(f1));    sfx"
+   fsqrt.s	"01011 00  00000 fs1 {2:0}  fd    10100 11"	fd.f,fs1.f		F,fp		D,S,m		"srm; wfd(f32_sqrt(f1));    sfx"
 															                                                       
-   feq.s	"10100 00    fs2 fs1 010    fd    10100 11"	rd.f,fs1.f,fs2.f	F,fp		d,S,T		"     wrd(f32_eq(f1, f2))"
-   flt.s	"10100 00    fs2 fs1 001    fd    10100 11"	rd.f,fs1.f,fs2.f	F,fp		d,S,T		"     wrd(f32_lt(f1, f2))"                 
-   fle.s	"10100 00    fs2 fs1 000    fd    10100 11"	rd.f,fs1.f,fs2.f	F,fp		d,S,T		"     wrd(f32_lt(f1, f2))"
-   fclass.s	"11100 00 00000  rs1 001    fd    10100 11"	rd.f,fs1.f		F,fp		d,S		"     wrd(f32_classify(f1))"
+   feq.s	"10100 00    fs2 fs1 010    rd    10100 11"	rd.f,fs1.f,fs2.f	F,fp		d,S,T		"     wrd(f32_eq(f1, f2))"
+   flt.s	"10100 00    fs2 fs1 001    rd    10100 11"	rd.f,fs1.f,fs2.f	F,fp		d,S,T		"     wrd(f32_lt(f1, f2))"                 
+   fle.s	"10100 00    fs2 fs1 000    rd    10100 11"	rd.f,fs1.f,fs2.f	F,fp		d,S,T		"     wrd(f32_lt(f1, f2))"
+   fclass.s	"11100 00 00000  fs1 001    rd    10100 11"	rd.f,fs1.f		F,fp		d,S		"     wrd(f32_classify(f1))"
    
    fmv.s	"00100 00    fs2 fs1 000    fd    10100 11"	fd.f,fs1.f,fs2.f	F,fp		D,S,T		"     wfd(f32_sgnj(f1, f2, false, false))"
    fsgnjn.s	"00100 00    fs2 fs1 001    fd    10100 11"	fd.f,fs1.f,fs2.f	F,fp		D,S,T		"     wfd(f32_sgnj(f1, f2, true,  false))"
    fsgnjx.s	"00100 00    fs2 fs1 010    fd    10100 11"	fd.f,fs1.f,fs2.f	F,fp		D,S,T		"     wfd(f32_sgnj(f1, f2, false,  true))"
 
-   fcvt.w.s	"11000 00 00000  rs1 {2:0}  fd    10100 11"	rd.w,fs1.f		F,fp		d,S,m		"srm; wrd(f32_to_i32( f1, RM, true)); sfx"
-   fcvt.wu.s	"11000 00 00001  rs1 {2:0}  fd    10100 11"	rd.uw,fs1.f		F,fp		d,S,m		"srm; wrd(f32_to_ui32(f1, RM, true)); sfx"
+   fcvt.w.s	"11000 00 00000  fs1 {2:0}  rd    10100 11"	rd.w,fs1.f		F,fp		d,S,m		"srm; wrd(f32_to_i32( f1, RM, true)); sfx"
+   fcvt.wu.s	"11000 00 00001  fs1 {2:0}  rd    10100 11"	rd.uw,fs1.f		F,fp		d,S,m		"srm; wrd(f32_to_ui32(f1, RM, true)); sfx"
    fcvt.s.w	"11010 00 00000  rs1 {2:0}  fd    10100 11"	fd.f,rs1.w		F,fp		D,s,m		"srm; wfd(i32_to_f32( ( int32_t)r1));  sfx"
    fcvt.s.wu	"11010 00 00001  rs1 {2:0}  fd    10100 11"	fd.f,rs1.uw		F,fp		D,s,m		"srm; wfd(ui32_to_f32((uint32_t)r1));  sfx"
 
-   fmv.x.w	"11100 00 00000  rs1 000    fd    10100 11"	rd.w,fs1.w		F,fp		d,S		"     wrd(f1)"
+   fmv.x.w	"11100 00 00000  fs1 000    rd    10100 11"	rd.w,fs1.w		F,fp		d,S		"     wrd(f1)"
    fmv.w.x	"11110 00 00000  rs1 000    fd    10100 11"	fd.w,rs1.w		F,fp		D,s		"     wfd(f32(r1))"                                    
 
 # RV64F Standard Extension (in addition to RV32F)
 
-   fcvt.l.s	"11000 00 00010  fs1 {2:0}  fd    10100 11"	rd.l,fs1.f		F,fp		d,S,m		"srm; wrd(f32_to_i64( f1, RM, true)); sfx"
-   fcvt.lu.s	"11000 00 00011  fs1 {2:0}  fd    10100 11"	rd.l,fs1.f		F,fp		d,S,m		"srm; wrd(f32_to_ui64(f1, RM, true)); sfx"
-   fcvt.s.l	"11010 00 00010  fs1 {2:0}  fd    10100 11"	fd.f,rs1.l		F,fp		D,s,m		"srm; wfd( i64_to_f32(r1));      sfx"
-   fcvt.s.lu	"11010 00 00011  fs1 {2:0}  fd    10100 11"	fd.f,rs1.l		F,fp		D,s,m		"srm; wfd(ui64_to_f32(r1));      sfx"
+   fcvt.l.s	"11000 00 00010  fs1 {2:0}  rd    10100 11"	rd.l,fs1.f		F,fp		d,S,m		"srm; wrd(f32_to_i64( f1, RM, true)); sfx"
+   fcvt.lu.s	"11000 00 00011  fs1 {2:0}  rd    10100 11"	rd.l,fs1.f		F,fp		d,S,m		"srm; wrd(f32_to_ui64(f1, RM, true)); sfx"
+   fcvt.s.l	"11010 00 00010  rs1 {2:0}  fd    10100 11"	fd.f,rs1.l		F,fp		D,s,m		"srm; wfd( i64_to_f32(r1));      sfx"
+   fcvt.s.lu	"11010 00 00011  rs1 {2:0}  fd    10100 11"	fd.f,rs1.l		F,fp		D,s,m		"srm; wfd(ui64_to_f32(r1));      sfx"
 
 # RV32D Standard Extension
 
@@ -259,17 +259,17 @@
    fmul.d	"00010 01    fs2 fs1 {2:0}  fd    10100 11"	fd.d,fs1.d,fs2.d	D,fp		D,S,T,m		"srm; wfd(f64_mul(f1, f2)); sfx"
    fdiv.d	"00011 01    fs2 fs1 {2:0}  fd    10100 11"	fd.d,fs1.d,fs2.d	D,fp		D,S,T,m		"srm; wfd(f64_div(f1, f2)); sfx"
 															
-   feq.d	"10100 01    fs2 fs1 010    fd    10100 11"	rd.d,fs1.d,fs2.d	D,fp		d,S,T		"     wrd(f64_eq(f1, f2))"
-   flt.d	"10100 01    fs2 fs1 001    fd    10100 11"	rd.d,fs1.d,fs2.d	D,fp		d,S,T		"     wrd(f64_lt(f1, f2))"
-   fle.d	"10100 01    fs2 fs1 000    fd    10100 11"	rd.d,fs1.d,fs2.d	D,fp		d,S,T		"     wrd(f64_lt(f1, f2))"
-   fclass.d	"11100 01 00000  rs1 001    fd    10100 11"	rd.d,fs1.d		D,fp		d,S		"     wrd(f64_classify(f1))"
+   feq.d	"10100 01    fs2 fs1 010    rd    10100 11"	rd.d,fs1.d,fs2.d	D,fp		d,S,T		"     wrd(f64_eq(f1, f2))"
+   flt.d	"10100 01    fs2 fs1 001    rd    10100 11"	rd.d,fs1.d,fs2.d	D,fp		d,S,T		"     wrd(f64_lt(f1, f2))"
+   fle.d	"10100 01    fs2 fs1 000    rd    10100 11"	rd.d,fs1.d,fs2.d	D,fp		d,S,T		"     wrd(f64_lt(f1, f2))"
+   fclass.d	"11100 01 00000  fs1 001    rd    10100 11"	rd.d,fs1.d		D,fp		d,S		"     wrd(f64_classify(f1))"
    
    fmv.d	"00100 01    fs2 fs1 000    fd    10100 11"	fd.d,fs1.d		D,fp		D,S		"     wfd(f64_sgnj(f1, f1, false, false))"
    fsgnjn.d	"00100 01    fs2 fs1 001    fd    10100 11"	fd.d,fs1.d,fs2.d	D,fp		D,S,T		"     wfd(f64_sgnj(f1, f2, true,  false))"
    fsgnjx.d	"00100 01    fs2 fs1 010    fd    10100 11"	fd.d,fs1.d,fs2.d	D,fp		D,S,T		"     wfd(f64_sgnj(f1, f2, false,  true))"
    
-   fcvt.w.d	"11000 01 00000  rs1 {2:0}  fd    10100 11"	rd.w,fs1.d		D,fp		D,s,m		"srm; wrd(f64_to_i32( f1, RM, true)); sfx"
-   fcvt.wu.d	"11000 01 00001  rs1 {2:0}  fd    10100 11"	rd.uw,fs1.d		D,fp		D,s,m		"srm; wrd(f64_to_ui32(f1, RM, true)); sfx"
+   fcvt.w.d	"11000 01 00000  fs1 {2:0}  rd    10100 11"	rd.w,fs1.d		D,fp		D,s,m		"srm; wrd(f64_to_i32( f1, RM, true)); sfx"
+   fcvt.wu.d	"11000 01 00001  fs1 {2:0}  rd    10100 11"	rd.uw,fs1.d		D,fp		D,s,m		"srm; wrd(f64_to_ui32(f1, RM, true)); sfx"
    fcvt.d.w	"11010 01 00000  rs1 {2:0}  fd    10100 11"	fd.d,rs1.w		D,fp		d,S,m		"srm; wfd( i32_to_f64(r1)); sfx"
    fcvt.d.wu	"11010 01 00001  rs1 {2:0}  fd    10100 11"	fd.d,rs1.uw		D,fp		d,S,m		"srm; wfd(ui32_to_f64(r1)); sfx"
 
@@ -277,7 +277,7 @@
    fcvt.d.s	"01000 01 00000  fs1 {2:0}  fd    10100 11"	fd.d,fs1.f		D,fp		D,S,m		"srm; wfd(f32_to_f64(f1));       sfx"
 
 # RV64D Standard Extension (in addition to RV32D)
-   fmv.x.d	"11100 01 00000  rs1 000    fd    10100 11"	rd.l,rs1.l		D,fp		d,S,m		"wrd(f1)"
+   fmv.x.d	"11100 01 00000  fs1 000    rd    10100 11"	rd.l,fs1.l		D,fp		d,S,m		"wrd(f1)"
    fmv.d.x	"11110 01 00000  rs1 000    fd    10100 11"	fd.l,rs1.l		D,fp		D,s,m		"wfd(r1)"
 
    fcvt.l.d	"11000 01 00010  fs1 {2:0}  rd    10100 11"	rd.l,fs1.d		D,fp		d,S,m		"wrd(f64_to_i64( f1, RM, true)); sfx"
