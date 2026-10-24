@@ -10,10 +10,10 @@ extern option<bool> conf_show;
 
 
 struct processor_state_t {
-  Addr_t pc;			// program counter
-  reg_t reg[SCALAR_REGS];	// all scalar registers
-  uint16_t fflags;		// floating point status flags
-  uint16_t frm;			// floating point rounding mode
+  Addr_t pc;				// program counter
+  reg_t reg[Number_of_Registers];	// all registers
+  uint16_t fflags;			// floating point status flags
+  uint16_t frm;				// floating point rounding mode
 };
 
 

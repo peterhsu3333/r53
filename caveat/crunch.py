@@ -44,30 +44,46 @@ class Hook:
 hooks = {}
 
 opcodes = [ 'ZERO' ]
+registers = []
 mapping = {}
 default_reglist = []
 
 reg_extractors = {}
 imm_extractors = {}
 
-field_declaration	= re.compile(r'^@field\s+(\(([^)]*)\))?\s*"""')
+line = ""
 
+
+register_section	= re.compile(r'^@register\s+(\d+)\s+"""')
+field_section		= re.compile(r'^@field\s+(\(([^)]*)\))?\s*"""')
+map_section		= re.compile(r'^@map\s+(\w+)\[(\d+):(\d+)\]\s+"""')
 
 field_line  = re.compile(r"\s*(\w+)\[(\d+):(\d+)\]\s+\'([^\']*)\'")
 format_line = re.compile(r'^\s*(\w+)\s+\"([^"]*)\"\s+(\S+)\s+(\S+)\s+(\S+)')
-map_section = re.compile(r'^@map\s+(\w+)\[(\d+):(\d+)\]\s+"""')
 op_explicit = re.compile(r'^\s*(\S+)\s+\"([^"]*)\"\s+(\S+)\s+(\S+)\s+(\S+)\s+\"([^"]*)\"')
 op_with_fmt = re.compile(r'^\s*(\S+)\s+(\S+)\s+\"([^"]*)\"(\s+\"([^"]*)\")?')
 
 hook_spec = re.compile(r'^\?(\w+)\[(\d+)\]')
 
 def eprint(*args):
-    sys.stderr.write(' '.join(args) + '\n')
+    print('Error'+" ".join(map(str,args)), file=sys.stderr)
+#    sys.stderr.write(' '.join(args) + '\n')
 
 def die(*args):
-    sys.stderr.write(' '.join(args) + '\n')
-    exit(-1)
+    print('Error'+" ".join(map(str,args)), file=sys.stderr)
+    raise AssertionError
+#    sys.stderr.write(' '.join(args) + '\n')
+#    exit(-1)
 
+def blank_line(line):
+    return re.match(r'^\s*(\#.*)?$', line)
+
+def diebadline():
+    print('Unrecognized line', lineno, ':')
+    print(line)
+    raise AssertionError
+#    exit(-1)
+    
 def unrecognized(line):
     if not re.match("^[ ]*(#.*)?", line):
         print('Unrecognized line:')
@@ -86,22 +102,35 @@ with open(isa_file_name) as f:
         line=lines[lineno] ; lineno+=1
         if re.match(r'\s*(\#.*)$', line):
             continue
-        m = field_declaration.match(line)
-        if m:
+        if re.match('^@register', line):
+            m = register_section.match(line)
+            if not m:
+                diebadline()
+            numregs = int(m.group(1))
+            line=lines[lineno] ; lineno+=1
+            while line != '"""\n':
+                registers += line.split()
+                line=lines[lineno] ; lineno+=1
+            if len(registers) != numregs:
+                die('expecting {:d} registers but read {:d} names'.format(numregs, len(registers)))
+        elif re.match('^@field', line):
+            m = field_section.match(line)
+            if not m:
+                diebadline()
             dummy, default_regs = m.groups()
             if default_regs:
                 default_reglist = default_regs.split(',')
             line=lines[lineno] ; lineno+=1
             while line != '"""\n':
-                m = field_line.match(line)
-                if m:
+                if not blank_line(line):
+                    m = field_line.match(line)
+                    if not m:
+                        diebadline()
                     name, hi, lo, regfunc = m.groups()
                     hi = int(hi)
                     lo = int(lo)
                     regfunc = 'int n=x({:d},{:d}); n={:s};'.format(lo, hi-lo+1, regfunc)
                     fields[name] = Field(hi, lo, regfunc)
-                else:
-                    unrecognized(line)
                 line=lines[lineno] ; lineno+=1
         elif re.match('^@format', line):
             line=lines[lineno] ; lineno+=1
@@ -113,14 +142,14 @@ with open(isa_file_name) as f:
                     reglist = reglist.split(',')
                     formats[name] = Format(bitpat, reglist, flags, asm)
                 else:
-                    unrecognized(line)
+                    diebadline()
                 line=lines[lineno] ; lineno+=1
             continue
         
         elif re.match('^@map', line):
             m = map_section.match(line)
             if not m:
-                die('Bad map declaration: ', line)
+                diebadline()
             name, hi, lo = m.groups()
             hi = int(hi)
             lo = int(lo)
@@ -148,7 +177,7 @@ with open(isa_file_name) as f:
             hooks[name] = Hook(hi, lo, table)
             continue    
 
-        else:
+        elif not blank_line(line):
             m = op_with_fmt.match(line)
             n = op_explicit.match(line)
             if m:
@@ -371,6 +400,15 @@ with open('newcode.tmp', 'w') as f:
     emit_bitvec(lambda a: not (a.isupper() or a.isnumeric()), 'ATTR', 'ATTR')
     emit_mask('<', 'stop_before')
     emit_mask('>', 'stop_after')
+
+    f.write('const char* reg_name[256] = {')
+    n = 0
+    for r in registers:
+        if n % 8 == 0:
+            f.write('\n  ')
+        f.write('{:10s}'.format('"' + r + '",'))
+        n += 1
+    f.write('\n};\n\n')
 diffcp('../caveat/constants.h')
 
 
@@ -389,7 +427,8 @@ with open('newcode.tmp', 'w') as f:
         f.write('{:20s}'.format('Op_' + opcode.replace('.','_') + ','))
         n += 1
     f.write('\n};\n\n')
-    f.write('const int Num1ber_of_Opcodes = {:d};\n\n'.format(len(opcodes)))
+    f.write('const int Number_of_Opcodes = {:d};\n\n'.format(len(opcodes)))
+    f.write('const int Number_of_Registers = {:d};\n\n'.format(len(registers)))
 
     for flag in sorted(defined_flags.keys()):
         table = defined_flags[flag]
@@ -478,7 +517,7 @@ Insn_t decoder(uintptr_t pc)
                     print(opcode, i.reglist)
                     die("Undefined register name", name)
             else:
-                regs.append('0')
+                regs.append('NOREG')
         opname = 'Op_' + opcode.replace('.','_')
         f.write('#line {:d} "{:s}"\n'.format(i.lineno, isa_file_name))
         f.write('  if (match(b, {:s}, {:s}, {:15s})) '.format(mask, code, opname))

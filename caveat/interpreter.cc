@@ -16,25 +16,10 @@
 #include "hart.h"
 #include "arithmetic.h"
 
-/*
-  int vl = insn.immed()&0x1f;
-  if (s.reg[rs1()].x < vl)
-    vl = s.reg[rs1()].x;
-  int rdv = last_insn.rd();
-  int rs1v = last_insn.rs1();
-  int rs2v = last_insn.rs2();
-  int rs3v = last_insn.rs3();
-  unsigned incmask = insn.immed()>>5);
-  for (int k=1; k<vl; ++k) {
-    if (incmask & (1<<0)) ++rdv;
-    if (incmask & (1<<1)) ++rs1v;
-    if (incmask & (1<<2)) ++rs2v;
-    if (incmask & (1<<3)) ++rs3v;
-*/
 
 bool hart_t::execute_instruction(Insn_t insn, Result_t* ap)
 {
-  uintptr_t tmp;
+  uxlen_t tmp;
   _executed++;
   s.reg[0].l = 0;
 #if 0
@@ -50,7 +35,7 @@ bool hart_t::execute_instruction(Insn_t insn, Result_t* ap)
 #define STORE(T, a, v) *(T*)(ap->addr=a)=(v)
 
 #define sp		s.reg[2].l
-#define rreg(n)		s.reg[n].l
+  //#define rreg(n)		s.reg[n].l
 #define wpc(e)		s.pc=(e)
 
 #define wreg(n, e)	ap->data=s.reg[n]=(e)
@@ -61,7 +46,7 @@ bool hart_t::execute_instruction(Insn_t insn, Result_t* ap)
 #define uimm	(uxlen_t)insn.immed()
   
 #define load_reserved(T, a)         *(T*)(ap->addr=a)
-#define store_conditional(T, a, v)  wrd( (*(T*)(ap->addr=a)=(v), 0) )
+#define store_conditional(T, a, v)  *(T*)(ap->addr=a)=(v), 0
 
 #define cas32(a, b, c, d) cas<int32_t>(a, b, c, d)
 #define cas64(a, b, c, d) cas<int64_t>(a, b, c, d)

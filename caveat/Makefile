@@ -8,6 +8,8 @@ ifndef CAVA
 CAVA := $(HOME)
 endif
 
+ARCH=riscv
+
 #MINUS_O := -g -Ofast -Wswitch
 #MINUS_O := -g -Ofast -Wswitch -DDEBUG
 MINUS_O := -g -O0 -Wswitch -DDEBUG
@@ -37,15 +39,15 @@ hart.o: hart.h
 proxy_syscall.o: ecall_nums.h
 gdblink.o:  caveat.h hart.h
 
+# Primary python script making everything
+
+opcodes.h constants.h semantics.h decoder.cc:  ../arch/$(ARCH)/$(ARCH)-isa.def crunch.py
+	python crunch.py ../arch/$(ARCH)/$(ARCH)-isa.def
+
 # Python scripts to create various files
 
 ecall_nums.h: Makefile munge_syscalls.py
 	python munge_syscalls.py > ecall_nums.h
-
-# Create riscv opcodes
-
-opcodes.h:
-	make -C ../opcodes
 
 # Cleanup & installation
 

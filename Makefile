@@ -15,7 +15,6 @@ nothing:
 
 install:
 	make -C softfloat -j 16 install
-	make -C opcodes   install
 	make -C caveat    install
 #	make -C pipesim   install
 
@@ -23,8 +22,8 @@ clean:
 	rm -f $(CAVA)/lib/libcava.a *~ ./#*#
 	rm -rf $(CAVA)/include/cava 
 	rm -f $(CAVA)/bin/caveat
+	rm -f arch/*/*~ arch/*/#*#
 	make -C softfloat clean
-	make -C opcodes   clean
 	make -C caveat    clean
 	make -C pipesim   clean
 

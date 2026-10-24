@@ -48,7 +48,7 @@ extern const uint64_t stop_after[];
 extern ISA_bv_t this_isa;
 //const  ISA_bv_t ISA_G = ISA_I|ISA_M|ISA_A|ISA_F|ISA_D;
 
-
+#if 0
 /*
  * RISC-V scalar registers.
  */
@@ -56,6 +56,9 @@ extern ISA_bv_t this_isa;
 #define GPREG	0		// x registers 1-31
 #define FPREG	(GPREG+32)	// f registers 0-31
 #define SCALAR_REGS (FPREG+32)	// total number of scalar registers
+#endif
+
+#define NOREG	0xFF
 
 /*
  * Decoded RISC-V instruction.
