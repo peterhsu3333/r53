@@ -37,7 +37,7 @@ f24	f25	f26	f27	f28	f29	f30	f31
 
 # RVC Compressed Instruction Set, Quadrant 0
    c.addi4spn	"000 {5:4|9:6|2|3}         c2 00"		c2.l,2.l		C		Ct,Cc,CK	"wrd(r1+imm)"
-   c.fld	"001 {5:3}    c1 {7:6}    fc2 00"		fc2.d,c1.l		C,F,ld		CD,Cl(Cs)	"wfd(f64(LOAD(double_t, r1+imm)))"
+   c.fld	"001 {5:3}    c1 {7:6}    fc2 00"		fc2.d,c1.l		C,D,ld		CD,Cl(Cs)	"wfd(f64(LOAD(double_t, r1+imm)))"
    c.lw		"010 {5:3}    c1 {2|6}     c2 00"		c2.w,c1.l		C,ld		Ct,Cl(Cs)	"wrd(    LOAD( int32_t, r1+imm))"
    c.ld		"011 {5:3}    c1 {7:6}     c2 00"		c2.f,c1.l		64,C,ld		Ct,Cl(Cs)	"wrd(    LOAD( int64_t, r1+imm))"
    c.flw	"011 {5:3}    c1 {2|6}    fc2 00"		fc2.d,c1.l		32,C,F,ld	Ct,Cl(Cs)	"wfd(f32(LOAD(uint32_t, r1+imm)))"
@@ -75,7 +75,7 @@ f24	f25	f26	f27	f28	f29	f30	f31
    c.jr		"100 0      rd          00000 10"		-,rd.l			C,uj,>		-		"reg_jump(r1)"
    c.mv		"100 0      rd            cs2 10"		rd.l,cs2.l		C		-		"wrd(r1)"
    c.ebreak	"100 1     00000        00000 10"		-			C,ex		-		"ebreak()"
-   c.jalr	"100 1      rd          00000 10"		-,rd.l			C,uj,>		-		"{ long npc=r1; wrd(s.pc+2); jump(npc); }"
+   c.jalr	"100 1      rd          00000 10"		1.l,rd.l		C,uj,>		-		"{ long npc=r1; wrd(s.pc+2); jump(npc); }"
    c.add	"100 1      rd            cs2 10"		rd.l,rd.l,cs2.l		C		-		"wrd(r1 + r2)"
    c.fsdsp	"101 {5:3|8:6}           fcs2 10"		-,2.l,fcs2.d		C,D,st		-		"STORE(uint64_t, r1+imm, r2.v)"
    c.swsp	"110 {5:2|7:6}            cs2 10"		-,2.l,cs2.w		C,st		-		"STORE(int32_t,  r1+imm, r2)"

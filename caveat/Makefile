@@ -11,8 +11,8 @@ endif
 ARCH=riscv
 
 #MINUS_O := -g -Ofast -Wswitch
-#MINUS_O := -g -Ofast -Wswitch -DDEBUG
-MINUS_O := -g -O0 -Wswitch -DDEBUG
+MINUS_O := -g -Ofast -Wswitch -DDEBUG
+#MINUS_O := -g -O0 -Wswitch -DDEBUG
 
 
 HEADERS := options.h opcodes.h caveat.h hart.h

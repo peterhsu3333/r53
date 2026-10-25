@@ -23,10 +23,11 @@ bool hart_t::execute_instruction(Insn_t insn, Result_t* ap)
   _executed++;
   s.reg[0].l = 0;
 
-#if 1
-  fprintf(stderr, "%lx ", s.pc);
+#if 0
+  if (!conf_show())
+    fprintf(stderr, "%lx ", s.pc);
   //#define do_return(jumped) fprintf(stderr, "%lx\n", insn.rd()==NOREG?s.reg[insn.rs2()].ul:s.reg[insn.rd()].ul); return (jumped);
-#define do_return(jumped) fprintf(stderr, "%lx\n", insn.rd()==NOREG?s.reg[0].ul:s.reg[insn.rd()].ul); return (jumped);
+#define do_return(jumped) if (!conf_show()) fprintf(stderr, "%lx\n", insn.rd()==NOREG?s.reg[0].ul:s.reg[insn.rd()].ul); return (jumped);
 #else
 #define do_return(jumped) return (jumped);
 #endif

@@ -230,10 +230,12 @@ Header_t* hart_t::find_bb(Addr_t pc)
 
 #ifdef RISCV
   // pattern match store conditional and replace with compare-and-swap
-  if (j->opcode()==Op_sc_w || j->opcode()==Op_sc_d)
+  if (j->opcode()==Op_sc_w || j->opcode()==Op_sc_d) {
+    fprintf(stderr, "substitute_cas(%lx)\n", dpc-4);
     substitute_cas(dpc-4, j);
+  }
 #endif
-  
+
   *wbb = Header_t(pc, dpc-pc, j+1-insnp(wbb+1), (ATTR[j->opcode()] & ATTR_cj)!=0);
   //
   // Always end with one pointer to next basic block
