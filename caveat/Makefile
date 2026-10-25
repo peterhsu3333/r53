@@ -24,8 +24,8 @@ bins := caveat.o gdblink.o $(libfiles)
 CXXFLAGS := -g $(MINUS_O) -I$(CAVA)/include/softfloat
 
 LIBS := $(CAVA)/lib/libsoftfloat.a
-LDFLAGS := -Wl,-Ttext=70000000 -static -Wl,--no-relax
-#LDFLAGS := -Wl,-Ttext=70000000
+#LDFLAGS := -Wl,-Ttext=70000000 -static -Wl,--no-relax
+LDFLAGS := -Wl,-Ttext=70000000
 
 caveat: $(bins) $(LIBS)
 	$(CXX) $(CXXFLAGS) -o caveat $(bins) $(LDFLAGS) $(LIBS)

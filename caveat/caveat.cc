@@ -2,51 +2,30 @@
   Copyright (c) 2021 Peter Hsu.  All Rights Reserved.  See LICENCE file for details.
 */
 #include <unistd.h>
+#include <stdio.h>
+#include <stdarg.h>
+#include <assert.h>
 #include <errno.h>
 #include <signal.h>
 #include <setjmp.h>
-#include <pthread.h>
 #include <sys/mman.h>
 
 #include "caveat.h"
 #include "hart.h"
 
-option<long> conf_report("report", 1, "Status report per second");
-
+option<long> conf_report("report", 0, "Status report every n million instructions");
 
 void status_report()
 {
-  //  static long n = 1;
-  //  fprintf(stderr, "\r%12ld", n++);
-  //  return;
-  
   double realtime = elapse_time();
-  long total = 0;
+  long long total = 0;
   long flushed = 0;
   for (hart_t* p=hart_t::list(); p; p=p->next()) {
     total += p->executed();
     flushed += p->flushed();
   }
-  //fprintf(stderr, "\r\33[2K%12ld insns ", total);
-  return;
-  
-  static double last_time;
-  static long last_total;
-  fprintf(stderr, "\r\33[2K%12ld insns %3.1fs(%ld) MIPS(%3.1f,%3.1f) ", total, realtime, flushed,
-	  (total-last_total)/1e6/(realtime-last_time), total/1e6/realtime);
-  last_time = realtime;
-  last_total = total;
-  if (hart_t::num_harts() <= 16 && total > 0) {
-    char separator = '(';
-    for (hart_t* p=hart_t::list(); p; p=p->next()) {
-      fprintf(stderr, "%c", separator);
-      fprintf(stderr, "%1ld%%", 100*p->executed()/total);
-      separator = ',';
-    }
-    fprintf(stderr, ")");
-  }
-  else if (hart_t::num_harts() > 1)
-    fprintf(stderr, "(%d cores)", hart_t::num_harts());
+  fprintf(stderr, "\r\33[2K%12lld insns %3.1fs %3.1f MIPS (%ld T-cache flushes)",
+	  total, realtime, total/1e6/realtime, flushed);
 }
 
 int my_clone_proxy(class hart_t* parent)
@@ -57,8 +36,22 @@ int my_clone_proxy(class hart_t* parent)
 
 void my_interpreter(hart_t* h)
 {
-  while (1)
-    h->run_basic_block();
+  if (conf_report() > 0) {
+    long report_epoch = conf_report() * 1000000;
+    //long report_epoch = conf_report() * 1000;
+    long next_report = report_epoch;
+    do {
+      while (h->executed() < next_report)
+	h->run_basic_block();
+      status_report();
+      next_report += report_epoch;
+    } while (1);
+  }
+  else {
+    while (1) {
+      h->run_basic_block();
+    }
+  }
 }
 
 static jmp_buf return_to_top_level;
@@ -83,14 +76,6 @@ void signal_handler(int nSIGnum, siginfo_t* si, void* vcontext)
   exit(-1);
 }
 #endif
-
-void* status_thread(void* arg)
-{
-  while (1) {
-    usleep(1000000/conf_report());
-    status_report();
-  }
-}
 
 void exitfunc()
 {
@@ -156,10 +141,6 @@ int main(int argc, const char* argv[], const char* envp[])
     }
   }
   else {
-    if (conf_report() > 0) {
-      pthread_t tnum;
-      dieif(pthread_create(&tnum, 0, status_thread, 0), "failed to launch status_report thread");
-    }
     atexit(exitfunc);
     my_interpreter(mycpu);
   }
