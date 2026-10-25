@@ -59,6 +59,7 @@ void hart_t::initialize()
 
 hart_t::hart_t(int argc, const char* argv[], const char* envp[])
 {
+#ifdef riscv
   // figure out architecture options
   if (strncmp(conf_arch(), "rv64", 4) == 0)
     this_isa |= ISA_64;
@@ -78,6 +79,7 @@ hart_t::hart_t(int argc, const char* argv[], const char* envp[])
     default:  die("Invalid architecture %s", conf_arch());
     }
   }
+#endif
   
   memset(&s, 0, sizeof(processor_state_t));
   Addr_t stack_pointer = emulate_execve(argv[0], argc, argv, envp, s.pc);
@@ -228,10 +230,10 @@ Header_t* hart_t::find_bb(Addr_t pc)
       break;
   } while (dpc-pc < 256 && j-insnp(wbb) < 128);
 
-#ifdef RISCV
+#ifdef riscv
   // pattern match store conditional and replace with compare-and-swap
   if (j->opcode()==Op_sc_w || j->opcode()==Op_sc_d) {
-    fprintf(stderr, "substitute_cas(%lx)\n", dpc-4);
+    //fprintf(stderr, "substitute_cas(%lx)\n", dpc-4);
     substitute_cas(dpc-4, j);
   }
 #endif
@@ -314,6 +316,7 @@ long default_riscv_syscall(hart_t* h, long a0)
 }
 
   
+#ifdef riscv
 void substitute_cas(Addr_t pc, Insn_t* i3)
 {
   //dbmsg("substitute_cas pc=%lx\n", pc);
@@ -350,3 +353,4 @@ void substitute_cas(Addr_t pc, Insn_t* i3)
   i3->op_code = (i3->opcode()==Op_sc_w) ? Op_cas_w : Op_cas_d;
   i3->op.rs3 = test_reg;
 }
+#endif

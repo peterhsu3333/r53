@@ -41,8 +41,8 @@
    
    Ff_fmt	"1111 10 ?FoP[8] 1         sX         rT"	sX.f,sX.f,rT.f		F		x,t		# Register-register format, float operands"
    Fd_fmt	"1111 10 ?FoP[8] 1         sX         rT"	sX.d,sX.d,rT.d		D		x,t		# Register-register format, double operands"
-   F3f_fmt	"1111 10 ?FoP[8] 1         sZ   sZ    sY"	sZ.f,sX.f,sY.f,sZ.f	F		z,x,y		# Register-register format, 3 float operands"
    F3d_fmt	"1111 10 ?FoP[8] 1         sX   sZ    sY"	sZ.d,sX.d,sY.d,sZ.d	D		z,x,y		# Register-register format, 3 double operands"
+   F3f_fmt	"1111 10 ?FoP[8] 1         sX   sZ    sY"	sZ.f,sX.f,sY.f,sZ.f	F		z,x,y		# Register-register format, 3 float operands"
    
    VSl_fmt	"1111 01 ?VoP[8] 0         vX   vZ    sY"	vZ.l,vX.l,sY.l		vec		z,x,y		# Vector-scalar format, long operands"
    VSw_fmt	"1111 01 ?VoP[8] 0         vX   vZ    sY"	vZ.w,vX.w,sY.w		vec		z,x,y		# Vector-scalar format, word operands"
@@ -58,15 +58,15 @@
 # Instructions with irregular formats
 #  Opcode	Bit Pattern					Regs		Flags	Asm	Action					Description
 
-   j		"01 ?jalr[3] {9|6:4|3:0|-10} 0000 {8:7}   rY"	-,rY.l		uj,>	x,y,p	"            wpc(r2+imm)"		"Jump"
-   jalr		"01 ?BoP[3]  {9|6:4|3:0|-10}   rX {8:7}   rY"	rX.l,rY.l	uj,>	x,y,p	"tmp=s.pc+3; wpc(r2+imm); wrd(tmp)"	"Jump And Link Register"
+   j		"01 ?jalr[3] {9|6:4|3:0|-10} 0000 {8:7}   rY"	-,rY.l		uj,>	x,y,p	"            wpc(r1+imm)"		"Jump"
+   jalr		"01 ?BoP[3]  {9|6:4|3:0|-10}   rX {8:7}   rY"	rX.l,rY.l	uj,>	x,y,p	"tmp=s.pc+3; wpc(r1+imm); wrd(tmp)"	"Jump And Link Register"
    b		"01 ?beq[3]  {9|6:4|3:0|-10} 0000 {8:7} 0000"	-		j,>	x,y,p	"wpc(s.pc+3*imm)"			"Branch"
    
    li		"1111 0  ?IoP[4] {3:0|-10} rX {8:7|6:4|9}"	rX.l		-	x,j	"wrd(imm)"				"Load Immediate"
    lui		"001           {20:11|-27} rX     {26:21}"	rX.l		-	x,u	"wrd(imm)"				"Load Upper Immediate"
    mv		"1111 11 ?RoP[8]           rX          rT"	rX.l,rT.l	-	x,t	"wrd(r1)"				"Move"
-   mvto		"1111 11 ?RoP[8]           rX          rT"	vT.l,rX.l	-	x,t	"wrd(r1)"				"Move to T Register"
-   mvfrom	"1111 11 ?RoP[8]           rX          rT"	rX.l,vT.l	-	x,t	"wrd(r1)"				"Move to T Register"
+   mvto		"1111 11 ?RoP[8]           rX          vT"	vT.l,rX.l	-	x,t	"wrd(r1)"				"Move to T Register"
+   mvfrom	"1111 11 ?RoP[8]           rX          vT"	rX.l,vT.l	-	x,t	"wrd(r1)"				"Move to T Register"
 
    fclass.f	"1111 11 ?RoP[8]           rX          rT"	rX.l,rT.f	F	x,t	"wrd(f32_classify(r1))"			"FP Float Classify"
    fsqrt.f	"1111 10 ?FoP[8] 1         sX          rT"	sX.f,rT.f	F	x,t	"wrd(f32_sqrt(r1))"			"FP Float Square Root"
@@ -159,12 +159,12 @@
    binvi	RI_fmt		"wrd(r1 ^  (1 << imm))"							"Bit Inverse Immediate"
    bext		R_fmt		"wrd((r1 >> r2 ) & 0x1)"						"Bit Extract"
    bexti	RI_fmt		"wrd((r1 >> imm) & 0x1)"						"Bit Extract Immediate"
-   sext.b	RU_fmt		"wrd(((long)(((int)r2<<24) >> 31) <<  8) | r2)"				"Sign Extend Byte"
-   sext.h	RU_fmt		"wrd(((long)(((int)r2<<16) >> 31) << 16) | r2)"				"Sign Extend Half"
-   sext.w	RUw_fmt,64	"wrd(         (int)r2                        )"				"Sign Extend Word"
-   zext.b	RU_fmt		"wrd((uint32_t)r2 << 24 >> 24)"		     				"Zero Extend Byte"
-   zext.h	RU_fmt		"wrd((uint32_t)r2 << 16 >> 16)"						"Zero Extend Half"
-   zext.w	RUw_fmt,64	"wrd((uint32_t)r2            )"						"Zero Extend Word"
+   sext.b	RU_fmt		"wrd(((long)(((int)r1<<24) >> 31) <<  8) | r1)"				"Sign Extend Byte"
+   sext.h	RU_fmt		"wrd(((long)(((int)r1<<16) >> 31) << 16) | r1)"				"Sign Extend Half"
+   sext.w	RUw_fmt,64	"wrd(         (int)r1                        )"				"Sign Extend Word"
+   zext.b	RU_fmt		"wrd((uint32_t)r1 << 24 >> 24)"		     				"Zero Extend Byte"
+   zext.h	RU_fmt		"wrd((uint32_t)r1 << 16 >> 16)"						"Zero Extend Half"
+   zext.w	RUw_fmt,64	"wrd((uint32_t)r1            )"						"Zero Extend Word"
 
 # Shift unit
    sll		R_fmt		"wrd(          r1 <<           r2 )"						"Shift Left Logical"
@@ -182,7 +182,7 @@
    ror		R_fmt		"wrd(((uint64_t)r1 >> r2 ) | ((uint64_t)r1 << (64-r2 )))"		"Rotate Right"
    rori		RI_fmt		"wrd(((uint64_t)r1 >> imm) | ((uint64_t)r1 << (64-imm)))"		"Rotate Right Immediate"
    rorw		Rw_fmt		"wrd(((uint32_t)r1 << r2 ) | ((uint32_t)r1 >> (32-r2 )))"		"Rotate Right Word"
-   roriw	RI_fmt		"wrd(((uint32_t)r1 >> r2 ) | ((uint32_t)r1 << (32-imm)))"		"Rotate Right Immediate Word"
+   roriw	RI_fmt		"wrd(((uint32_t)r1 >> imm) | ((uint32_t)r1 << (32-imm)))"		"Rotate Right Immediate Word"
 
 # Integer Multiply and Divide
    mul		R_fmt		"wrd( r1 * r2)"								"Multiply"
@@ -197,9 +197,12 @@
    
    mulw		Rw_fmt,64	"wrd( r1 * r2)"								"Multiply Word"
    divw		Rw_fmt,64	"wrd(r2==0 ?  INT32_MAX : (r1==INT32_MIN && r2==-1) ? r1 : r1/r2)"	"Divide"
-   divuw	Ruw_fmt,64	"wrd(r2==0 ? UINT32_MAX :                                  r1/r2)"		"Divide Unsigned"
+   divuw	Ruw_fmt,64	"wrd(r2==0 ? UINT32_MAX :                                  r1/r2)"	"Divide Unsigned"
    remw		Rw_fmt,64	"wrd(r2==0 ?  INT32_MAX : (r1==INT32_MIN && r2==-1) ? r1 : r1%r2)"	"Remainder"
-   remuw	Ruw_fmt,64	"wrd(r2==0 ? UINT32_MAX :                                  r1%r2)"		"Remainder Unsigned"
+   remuw	Ruw_fmt,64	"wrd(r2==0 ? UINT32_MAX :                                  r1%r2)"	"Remainder Unsigned"
+
+# Special instructions
+   cas		"1111 10 ?FoP[8] 1         sX   sZ    sY"	sZ.l,sX.l,sY.l,sZ.l	rmw	z,x,y	"wrd(cas(r1,r2,r3))"	"Compare And Swap Word"
 
 # Floating Point Instructions
    fadd.f	Ff_fmt		"wrd(f32_add(r1, r2))"							"FP Single Add"
@@ -231,13 +234,14 @@
 # Floating Point Multiply-Add Instructions
    fmadd.f 	 F3f_fmt	"wrd(f32_mulAdd(           r1 , r2,            r3 ))"			"FP Multiply-Add Float"
    fmsub.f 	 F3f_fmt	"wrd(f32_mulAdd(           r1 , r2, f32_invsgn(r3)))"			"FP Multiply-Subtract Float"
-   fnmsub.f 	 F3f_fmt	"wrd(f32_mulAdd(f32_invsgn(r1), r2,            r3 ))"			"FP Negative Multiply-Add Float"
-   fnmadd.f 	 F3f_fmt	"wrd(f32_mulAdd(f32_invsgn(r1), r2, f32_invsgn(r3)))"			"FP Negative Multiply-Subtract Float"
+   fnmsub.f 	 F3f_fmt	"wrd(f32_mulAdd(f32_invsgn(r1), r2,            r3 ))"			"FP Negative Multiply-Subtract Float"
+   fnmadd.f 	 F3f_fmt	"wrd(f32_mulAdd(f32_invsgn(r1), r2, f32_invsgn(r3)))"			"FP Negative Multiply-Add Float"
    
    fmadd.d 	 F3d_fmt	"wrd(f64_mulAdd(           r1 , r2,            r3 ))"			"FP Multiply-Add Double"
    fmsub.d 	 F3d_fmt	"wrd(f64_mulAdd(           r1 , r2, f64_invsgn(r3)))"			"FP Multiply-Subtract Double"
-   fnmsub.d 	 F3d_fmt	"wrd(f64_mulAdd(f64_invsgn(r1), r2,            r3 ))"			"FP Negative Multiply-Add Double"
-   fnmadd.d 	 F3d_fmt	"wrd(f64_mulAdd(f64_invsgn(r1), r2, f64_invsgn(r3)))"			"FP Negative Multiply-Subtract Double"
+   fnmsub.d 	 F3d_fmt	"wrd(f64_mulAdd(f64_invsgn(r1), r2,            r3 ))"			"FP Negative Multiply-Subtract Double"
+   fnmadd.d 	 F3d_fmt	"wrd(f64_mulAdd(f64_invsgn(r1), r2, f64_invsgn(r3)))"			"FP Negative Multiply-Add Double"
+
 
 
 
@@ -366,7 +370,7 @@ v.sext.b	v.sext.h	v.sext.w	.		v.zext.b	v.zext.h	v.zext.w	.
 fmadd.f		fmadd.d		fmsub.f		fmsub.d		fnmsub.f	fnmsub.d	fnmadd.f	fnmadd.d
 v.fmadd.f	v.fmadd.d	v.fmsub.f	v.fmsub.d	v.fnmsub.f	v.fnmsub.d	v.fnmadd.f	v.fnmadd.d
 vs.fmadd.f	vs.fmadd.d	vs.fmsub.f	vs.fmsub.d	vs.fnmsub.f	vs.fnmsub.d	vs.fnmadd.f	vs.fnmadd.d	# 3-input multiply-add instructions
-.		.		.		.		.		.		.		.
+cas		.		.		.		.		.		.		.
 
 # Vector memory operations.  These use the VS-fmt.
 .		v.lwu		v.lhu		v.lbu		v.sd		v.sw		v.sh		v.sb		# Vector strided memory ops

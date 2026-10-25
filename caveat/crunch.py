@@ -135,14 +135,14 @@ with open(isa_file_name) as f:
         elif re.match('^@format', line):
             line=lines[lineno] ; lineno+=1
             while line != '"""\n':
-                m = format_line.match(line)
-                if m:
+                if not blank_line(line):
+                    m = format_line.match(line)
+                    if not m:
+                        diebadline()
                     name, bitpat, reglist, flags, asm = m.groups()
                     flags = flags.split(',')
                     reglist = reglist.split(',')
                     formats[name] = Format(bitpat, reglist, flags, asm)
-                else:
-                    diebadline()
                 line=lines[lineno] ; lineno+=1
             continue
         

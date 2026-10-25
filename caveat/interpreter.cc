@@ -16,6 +16,10 @@
 #include "hart.h"
 #include "arithmetic.h"
 
+/***** Temporary Hacks
+ */
+#define cas(a,b,c) 0
+
 
 bool hart_t::execute_instruction(Insn_t insn, Result_t* ap)
 {

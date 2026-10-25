@@ -96,8 +96,8 @@ int sprtinsn(char* buf, Addr_t pc, const Insn_t* i, Result_t result)
       n += sprintf(buf+n, "%4s[%016lx] ", reg_name[i->rs2()], result.data.ul); 
     else if ((ATTR[i->opcode()] & (ATTR_cj|ATTR_uj)) && (i->rs1() != NOREG))
       n += sprintf(buf+n, "%4s[%016lx] ", reg_name[i->rs1()], result.data.ul); 
-    else if (ATTR[i->opcode()] & ATTR_ex)
-      n += sprintf(buf+n, "%4s[%016lx] ", reg_name[10], result.data.ul);
+    //    else if (ATTR[i->opcode()] & ATTR_ex)
+    //      n += sprintf(buf+n, "%4s[%016lx] ", reg_name[10], result.data.ul);
     else
       n += sprintf(buf+n, "%4s[%16s] ", "", "");
   }

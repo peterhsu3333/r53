@@ -9,6 +9,7 @@ CAVA := $(HOME)
 endif
 
 ARCH=riscv
+#ARCH=r53
 
 #MINUS_O := -g -Ofast -Wswitch
 MINUS_O := -g -Ofast -Wswitch -DDEBUG
@@ -21,7 +22,7 @@ libfiles := options.o instructions.o loader.o decoder.o proxy_syscall.o interpre
 bins := caveat.o gdblink.o $(libfiles)
 
 # Compiling options
-CXXFLAGS := -g $(MINUS_O) -I$(CAVA)/include/softfloat
+CXXFLAGS := -g $(MINUS_O) -D$(ARCH) -I$(CAVA)/include/softfloat
 
 LIBS := $(CAVA)/lib/libsoftfloat.a
 #LDFLAGS := -Wl,-Ttext=70000000 -static -Wl,--no-relax
@@ -41,7 +42,9 @@ gdblink.o:  caveat.h hart.h
 
 # Primary python script making everything
 
-opcodes.h constants.h semantics.h decoder.cc:  ../arch/$(ARCH)/$(ARCH)-isa.def crunch.py
+opcodes.h constants.h semantics.h:  decoder.cc
+
+decoder.cc:  ../arch/$(ARCH)/$(ARCH)-isa.def crunch.py
 	python crunch.py ../arch/$(ARCH)/$(ARCH)-isa.def
 
 # Python scripts to create various files
