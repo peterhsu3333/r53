@@ -24,6 +24,7 @@ class Instruction:
     bitpat:	str             # encoding bit pattern
     reglist:	any		# rd,rs1,rs2,rs3 with type
     flags:	str             # attributes and isa
+    typ:	str		# type replacing star
     asm:	str             # how to print
     action:	str             # C++ statement for interpreter
     original:	str		# Line from .def, for debugging
@@ -58,8 +59,8 @@ register_section	= re.compile(r'^@register\s+(\d+)\s+"""')
 field_section		= re.compile(r'^@field\s+(\(([^)]*)\))?\s*"""')
 map_section		= re.compile(r'^@map\s+(\w+)\[(\d+):(\d+)\]\s+"""')
 
-field_line  = re.compile(r"\s*(\w+)\[(\d+):(\d+)\]\s+\'([^\']*)\'")
-format_line = re.compile(r'^\s*(\w+)\s+\"([^"]*)\"\s+(\S+)\s+(\S+)\s+(\S+)')
+field_line  = re.compile(r'\s*(\w+)\[(\d+):(\d+)\]\s+\"([^\']*)\"')
+format_line = re.compile(r'^=\s+([A-Za-z][A-Za-z_0-9\-]*)(\([^)]+\))?\s+\"([^"]*)\"\s+(\S+)\s+(\S+)\s+(\S+)')
 op_explicit = re.compile(r'^\s*(\S+)\s+\"([^"]*)\"\s+(\S+)\s+(\S+)\s+(\S+)\s+\"([^"]*)\"')
 op_with_fmt = re.compile(r'^\s*(\S+)\s+(\S+)\s+\"([^"]*)\"(\s+\"([^"]*)\")?')
 
@@ -132,19 +133,6 @@ with open(isa_file_name) as f:
                     regfunc = 'int n=x({:d},{:d}); n={:s};'.format(lo, hi-lo+1, regfunc)
                     fields[name] = Field(hi, lo, regfunc)
                 line=lines[lineno] ; lineno+=1
-        elif re.match('^@format', line):
-            line=lines[lineno] ; lineno+=1
-            while line != '"""\n':
-                if not blank_line(line):
-                    m = format_line.match(line)
-                    if not m:
-                        diebadline()
-                    name, bitpat, reglist, flags, asm = m.groups()
-                    flags = flags.split(',')
-                    reglist = reglist.split(',')
-                    formats[name] = Format(bitpat, reglist, flags, asm)
-                line=lines[lineno] ; lineno+=1
-            continue
         
         elif re.match('^@map', line):
             m = map_section.match(line)
@@ -177,6 +165,19 @@ with open(isa_file_name) as f:
             hooks[name] = Hook(hi, lo, table)
             continue    
 
+        elif line[0] == '=':
+            m = format_line.match(line)
+            if not m:
+                diebadline()
+            name, typ, bitpat, reglist, flags, asm = m.groups()
+            if flags == '-':
+                flags = []
+            else:
+                flags = flags.split(',')
+            reglist = reglist.split(',')
+            formats[name] = Format(bitpat, reglist, flags, asm)
+            continue
+        
         elif not blank_line(line):
             m = op_with_fmt.match(line)
             n = op_explicit.match(line)
@@ -187,17 +188,22 @@ with open(isa_file_name) as f:
                     die('Duplicate opcode')
                 tuple = fmt.split(',')
                 format_name = tuple[0]
+                typ_arg = None
+                if '(' in format_name:
+                    format_name, typ_arg = format_name.split('(')
+                    typ_arg = typ_arg[:-1]
                 if format_name not in formats:
+                    print(formats.keys())
                     die('Undefined format', format_name, 'in', line)
                 fmt = formats[format_name]
                 flags = fmt.flags + tuple[1:]
-                insns[name] = Instruction(fmt.bitpat, fmt.reglist, flags, fmt.asm, action, line, lineno)
+                insns[name] = Instruction(fmt.bitpat, fmt.reglist, flags, typ_arg, fmt.asm, action, line, lineno)
                 opcodes.append(name)
             elif n:
                 name, bitpat, reglist, flags, asm, action = n.groups()
                 reglist = reglist.split(',')
                 flags = flags.split(',')
-                insns[name] = Instruction(bitpat, reglist, flags, asm, action, line, lineno)
+                insns[name] = Instruction(bitpat, reglist, flags, None, asm, action, line, lineno)
                 opcodes.append(name)
             else:
                 if unrecognized(line):
@@ -290,6 +296,10 @@ for opcode in insns:
     for r in insns[opcode].reglist:
         if r == '-':
             continue
+        if '.' not in r:
+            print('bad register field')
+            print(insns[opcode].original)
+            exit(-1)
         name, typ = r.split('.')
         if name.isnumeric() or name in operands:
             continue
@@ -554,6 +564,8 @@ with open('newcode.tmp', 'w') as f:
             if i.reglist[k] == '-':
                 continue
             name, typ = i.reglist[k].split('.')
+            if typ == '*':
+                typ = i.typ
             if name.isnumeric():
                 action = re.sub(r'[rf]{:d}'.format(k), 's.reg[{:s}].{:s}'.format(name, typ), action)
             elif name in fields:

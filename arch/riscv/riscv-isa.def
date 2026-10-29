@@ -12,21 +12,21 @@ f24	f25	f26	f27	f28	f29	f30	f31
 
 @field (rd,rs1,rs2,rs3) """
 #  Field Name		Mapping Function			Description
-    rd[11:7]		'n'					# Integer registers numbered 0-31
-   rs1[19:15]		'n'
-   rs2[24:20]		'n'
-   rs3[31:27]		'n'
-   cs2[6:2]		'n'					# rs2 moves here in compressed instructions
-    c1[9:7]		'n+8'					# Compressed registers
-    c2[4:2]		'n+8'
+    rd[11:7]		"n"					# Integer registers numbered 0-31
+   rs1[19:15]		"n"
+   rs2[24:20]		"n"
+   rs3[31:27]		"n"
+   cs2[6:2]		"n"					# rs2 moves here in compressed instructions
+    c1[9:7]		"n+8"					# Compressed registers
+    c2[4:2]		"n+8"
 
-    fd[11:7]		'n+32'					# Float registers numbered 32-63
-   fs1[19:15]		'n+32'
-   fs2[24:20]		'n+32'
-   fs3[31:27]		'n+32'
-   fcs2[6:2]		'n+32'
-   fc1[9:7]		'n+8+32'
-   fc2[4:2]		'n+8+32'
+    fd[11:7]		"n+32"					# Float registers numbered 32-63
+   fs1[19:15]		"n+32"
+   fs2[24:20]		"n+32"
+   fs3[31:27]		"n+32"
+   fcs2[6:2]		"n+32"
+   fc1[9:7]		"n+8+32"
+   fc2[4:2]		"n+8+32"
 """
 
 
